@@ -1,6 +1,6 @@
 # LGURT Business Dashboard v5.1
 
-Amazon 运营数据分析仪表盘 - 极简商务版 
+Amazon 运营数据分析仪表盘 - 极简商务版
 
 ## 🆕 v5.1 更新
 
