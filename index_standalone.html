@@ -1,0 +1,1545 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="theme-dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LGURT Business Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <style>
+/* ==================== 任务0: Design Tokens (Apple-like极简商务风) ==================== */
+:root {
+    /* Typography */
+    --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'SF Mono', 'Menlo', monospace;
+    
+    /* Spacing */
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 32px;
+    --space-2xl: 48px;
+    
+    /* Border radius */
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+    --shadow-xl: 0 25px 50px -12px rgba(0,0,0,0.25);
+    
+    /* Transitions */
+    --transition-fast: 150ms ease;
+    --transition-base: 200ms ease;
+    --transition-slow: 300ms ease;
+}
+
+/* Dark Theme (Default) */
+.theme-dark {
+    --bg-app: #0a0a0f;
+    --bg-surface: #141418;
+    --bg-elevated: #1c1c22;
+    --bg-hover: #252530;
+    --bg-active: #2d2d3a;
+    
+    --border-subtle: rgba(255,255,255,0.06);
+    --border-default: rgba(255,255,255,0.1);
+    --border-strong: rgba(255,255,255,0.15);
+    
+    --text-primary: #f5f5f7;
+    --text-secondary: #a1a1a6;
+    --text-tertiary: #6e6e73;
+    --text-inverse: #1d1d1f;
+    
+    --accent-primary: #0071e3;
+    --accent-success: #30d158;
+    --accent-warning: #ff9f0a;
+    --accent-danger: #ff453a;
+    --accent-info: #64d2ff;
+    
+    --kpi-positive: #30d158;
+    --kpi-negative: #ff453a;
+    --kpi-neutral: #a1a1a6;
+}
+
+/* Light Theme (Optional) */
+.theme-light {
+    --bg-app: #f5f5f7;
+    --bg-surface: #ffffff;
+    --bg-elevated: #ffffff;
+    --bg-hover: #f5f5f7;
+    --bg-active: #e8e8ed;
+    
+    --border-subtle: rgba(0,0,0,0.04);
+    --border-default: rgba(0,0,0,0.08);
+    --border-strong: rgba(0,0,0,0.12);
+    
+    --text-primary: #1d1d1f;
+    --text-secondary: #6e6e73;
+    --text-tertiary: #a1a1a6;
+    --text-inverse: #f5f5f7;
+    
+    --accent-primary: #0071e3;
+    --accent-success: #34c759;
+    --accent-warning: #ff9500;
+    --accent-danger: #ff3b30;
+    --accent-info: #5ac8fa;
+    
+    --kpi-positive: #34c759;
+    --kpi-negative: #ff3b30;
+    --kpi-neutral: #6e6e73;
+}
+
+/* ==================== Base Styles ==================== */
+* { box-sizing: border-box; }
+body { 
+    font-family: var(--font-sans);
+    background: var(--bg-app);
+    color: var(--text-primary);
+    min-height: 100vh;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ==================== Semantic Classes ==================== */
+.app-bg { background: var(--bg-app); }
+.surface { background: var(--bg-surface); }
+.elevated { background: var(--bg-elevated); }
+
+.panel {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-base);
+}
+.panel:hover { border-color: var(--border-default); }
+.panel-header { padding: var(--space-md) var(--space-lg); border-bottom: 1px solid var(--border-subtle); }
+.panel-body { padding: var(--space-lg); }
+
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-tertiary { color: var(--text-tertiary); }
+
+/* KPI Cards */
+.kpi-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    transition: all var(--transition-base);
+}
+.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.kpi-label { font-size: 12px; font-weight: 500; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.kpi-value { font-size: 28px; font-weight: 600; line-height: 1.1; letter-spacing: -0.5px; }
+.kpi-value.positive { color: var(--kpi-positive); }
+.kpi-value.negative { color: var(--kpi-negative); }
+.kpi-sub { font-size: 13px; color: var(--text-secondary); margin-top: 6px; }
+
+/* Buttons */
+.btn { 
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 10px 18px; font-size: 14px; font-weight: 500;
+    border-radius: var(--radius-md); border: none; cursor: pointer;
+    transition: all var(--transition-fast);
+}
+.btn-primary { background: var(--accent-primary); color: white; }
+.btn-primary:hover { filter: brightness(1.1); transform: scale(1.02); }
+.btn-secondary { background: var(--bg-hover); color: var(--text-primary); border: 1px solid var(--border-default); }
+.btn-secondary:hover { background: var(--bg-active); }
+
+/* Badges */
+.badge { 
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; font-size: 12px; font-weight: 500;
+    border-radius: 100px; 
+}
+.badge-success { background: rgba(48,209,88,0.15); color: var(--accent-success); }
+.badge-warning { background: rgba(255,159,10,0.15); color: var(--accent-warning); }
+.badge-danger { background: rgba(255,69,58,0.15); color: var(--accent-danger); }
+.badge-info { background: rgba(100,210,255,0.15); color: var(--accent-info); }
+.badge-neutral { background: var(--bg-hover); color: var(--text-secondary); }
+
+/* Chips */
+.chip { 
+    padding: 6px 14px; font-size: 13px; font-weight: 500;
+    border-radius: 100px; cursor: pointer;
+    background: var(--bg-hover); color: var(--text-secondary);
+    border: 1px solid transparent;
+    transition: all var(--transition-fast);
+}
+.chip:hover { background: var(--bg-active); color: var(--text-primary); }
+.chip.active { background: var(--accent-primary); color: white; border-color: var(--accent-primary); }
+
+/* Tables */
+.data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.data-table th { 
+    padding: 12px 16px; text-align: left;
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--text-tertiary); background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border-default);
+}
+.data-table td { 
+    padding: 14px 16px; font-size: 14px;
+    border-bottom: 1px solid var(--border-subtle);
+    transition: background var(--transition-fast);
+}
+.data-table tbody tr:hover td { background: var(--bg-hover); }
+.data-table .text-right { text-align: right; }
+.data-table .sortable { cursor: pointer; user-select: none; }
+.data-table .sortable:hover { color: var(--accent-primary); }
+
+/* Alerts */
+.alert {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: var(--space-md); border-radius: var(--radius-md);
+    border: 1px solid;
+}
+.alert-critical { background: rgba(255,69,58,0.08); border-color: rgba(255,69,58,0.2); }
+.alert-warning { background: rgba(255,159,10,0.08); border-color: rgba(255,159,10,0.2); }
+.alert-success { background: rgba(48,209,88,0.08); border-color: rgba(48,209,88,0.2); }
+.alert-info { background: rgba(100,210,255,0.08); border-color: rgba(100,210,255,0.2); }
+
+/* Inputs */
+.input {
+    padding: 10px 14px; font-size: 14px;
+    background: var(--bg-elevated); color: var(--text-primary);
+    border: 1px solid var(--border-default); border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+}
+.input:focus { outline: none; border-color: var(--accent-primary); box-shadow: 0 0 0 3px rgba(0,113,227,0.2); }
+.input::placeholder { color: var(--text-tertiary); }
+
+/* Tabs */
+.tab-nav { display: flex; gap: 4px; padding: 4px; background: var(--bg-elevated); border-radius: var(--radius-md); }
+.tab-btn { 
+    padding: 10px 18px; font-size: 14px; font-weight: 500;
+    color: var(--text-secondary); background: transparent;
+    border: none; border-radius: var(--radius-sm); cursor: pointer;
+    transition: all var(--transition-fast);
+}
+.tab-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
+.tab-btn.active { color: var(--text-primary); background: var(--bg-surface); box-shadow: var(--shadow-sm); }
+
+/* Modals */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 100; }
+.modal-content { 
+    background: var(--bg-surface); 
+    border-radius: var(--radius-xl); 
+    box-shadow: var(--shadow-xl);
+    max-height: 90vh; overflow: hidden;
+}
+.modal-header { 
+    padding: var(--space-lg); 
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex; justify-content: space-between; align-items: center;
+}
+.modal-title { font-size: 18px; font-weight: 600; }
+.modal-close { 
+    width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+    background: var(--bg-hover); border-radius: 50%; cursor: pointer;
+    color: var(--text-secondary); font-size: 18px;
+    transition: all var(--transition-fast);
+}
+.modal-close:hover { background: var(--bg-active); color: var(--text-primary); }
+.modal-body { padding: var(--space-lg); overflow-y: auto; max-height: calc(90vh - 140px); }
+
+/* Header */
+.app-header {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--bg-surface); 
+    border-bottom: 1px solid var(--border-subtle);
+    backdrop-filter: blur(20px);
+}
+
+/* Dropdown */
+.dropdown { position: relative; }
+.dropdown-trigger { cursor: pointer; }
+.dropdown-menu { 
+    position: absolute; right: 0; top: 100%; margin-top: 4px;
+    min-width: 180px; padding: 6px;
+    background: var(--bg-elevated); border: 1px solid var(--border-default);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
+    opacity: 0; visibility: hidden; transform: translateY(-8px);
+    transition: all var(--transition-fast);
+}
+.dropdown:hover .dropdown-menu { opacity: 1; visibility: visible; transform: translateY(0); }
+.dropdown-item {
+    display: block; padding: 10px 14px; font-size: 14px;
+    color: var(--text-primary); border-radius: var(--radius-sm);
+    cursor: pointer; transition: background var(--transition-fast);
+}
+.dropdown-item:hover { background: var(--bg-hover); }
+
+/* Upload Zone */
+.upload-zone {
+    border: 2px dashed var(--border-default);
+    border-radius: var(--radius-lg);
+    padding: var(--space-2xl);
+    text-align: center;
+    transition: all var(--transition-base);
+    cursor: pointer;
+}
+.upload-zone:hover, .upload-zone.dragover { 
+    border-color: var(--accent-primary); 
+    background: rgba(0,113,227,0.05); 
+}
+
+/* Theme Toggle */
+.theme-toggle {
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg-hover); border-radius: 50%;
+    cursor: pointer; font-size: 16px;
+    transition: all var(--transition-fast);
+}
+.theme-toggle:hover { background: var(--bg-active); }
+
+/* Quadrant Grid */
+.quadrant-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border-subtle); border-radius: var(--radius-md); overflow: hidden; }
+.quadrant-cell { padding: var(--space-md); background: var(--bg-surface); }
+
+/* Progress bars */
+.progress { height: 6px; background: var(--bg-hover); border-radius: 3px; overflow: hidden; }
+.progress-bar { height: 100%; border-radius: 3px; transition: width var(--transition-slow); }
+
+/* PDF Print Styles */
+@media print {
+    body { background: white !important; color: #1d1d1f !important; }
+    .panel, .kpi-card { border: 1px solid #e5e5e5 !important; background: white !important; }
+    .no-print { display: none !important; }
+}
+
+/* Animation */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.animate-in { animation: fadeIn 0.3s ease-out; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Upload Section -->
+        <div id="upload-section" class="max-w-xl mx-auto px-6 py-20">
+            <header class="text-center mb-10">
+                <div class="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-3xl">📊</div>
+                <h1 class="text-3xl font-semibold text-primary mb-2">LGURT Dashboard</h1>
+                <p class="text-secondary">上传Excel，自动生成经营分析报告 <span class="badge badge-neutral">v5.1</span></p>
+            </header>
+            <div class="panel">
+                <div class="panel-body">
+                    <div id="upload-zone" class="upload-zone mb-6">
+                        <div class="text-5xl mb-4 opacity-60">📄</div>
+                        <p class="text-lg text-primary mb-2">拖放 Excel 文件到这里</p>
+                        <p class="text-secondary text-sm mb-4">支持 .xlsx 格式</p>
+                        <input type="file" id="file-input" accept=".xlsx,.xls" class="hidden">
+                        <button onclick="document.getElementById('file-input').click()" class="btn btn-primary">选择文件</button>
+                    </div>
+                    <div class="flex items-center justify-center gap-6 flex-wrap">
+                        <div class="flex items-center gap-2">
+                            <label class="text-secondary text-sm">数据周期</label>
+                            <input type="number" id="days-input" value="31" min="1" max="365" class="input w-20 text-center">
+                            <span class="text-secondary text-sm">天</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="text-secondary text-sm">头程模式</label>
+                            <select id="lead-time-select" class="input">
+                                <option value="15">快船 (15天)</option>
+                                <option value="35" selected>慢船 (35天)</option>
+                                <option value="45">极慢船 (45天)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="upload-status" class="mt-4 text-center hidden"><span class="text-secondary">⏳ 处理中...</span></div>
+                    <div id="upload-error" class="mt-4 text-center hidden" style="color: var(--accent-danger);"></div>
+                </div>
+            </div>
+            <div id="history-section" class="mt-6 hidden">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-secondary text-sm font-medium">📋 历史记录</span>
+                    <button onclick="clearAllHistory()" class="text-xs" style="color: var(--accent-danger);">清除全部</button>
+                </div>
+                <div id="history-list" class="space-y-2 max-h-64 overflow-auto"></div>
+            </div>
+        </div>
+
+        <!-- Dashboard Section -->
+        <div id="dashboard-section" class="hidden">
+            <header class="app-header">
+                <div class="max-w-7xl mx-auto px-6 py-4">
+                    <div class="flex justify-between items-center flex-wrap gap-3">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-xl">📊</div>
+                            <div>
+                                <h1 class="text-lg font-semibold text-primary">LGURT Dashboard</h1>
+                                <p id="period-label" class="text-xs text-tertiary"></p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <input type="text" id="sku-search" placeholder="搜索 SKU / ASIN..." class="input w-44">
+                            <div id="filter-badge" class="hidden"></div>
+                            <div class="dropdown">
+                                <button class="btn btn-primary dropdown-trigger">📥 导出 ▾</button>
+                                <div class="dropdown-menu">
+                                    <a class="dropdown-item" onclick="exportPDF()">📄 PDF 报告</a>
+                                    <a class="dropdown-item" onclick="exportXLSX()">📊 Excel 完整报告</a>
+                                    <a class="dropdown-item" onclick="exportCSV()">📋 CSV</a>
+                                </div>
+                            </div>
+                            <div class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</div>
+                            <button onclick="resetDashboard()" class="btn btn-secondary">重新上传</button>
+                        </div>
+                    </div>
+                    <nav class="tab-nav mt-4 no-print">
+                        <button onclick="switchTab('overview')" class="tab-btn active" data-tab="overview">📊 概览</button>
+                        <button onclick="switchTab('decision')" class="tab-btn" data-tab="decision">🧠 决策</button>
+                        <button onclick="switchTab('profit')" class="tab-btn" data-tab="profit">💰 利润</button>
+                        <button onclick="switchTab('ads')" class="tab-btn" data-tab="ads">🎯 广告</button>
+                        <button onclick="switchTab('inventory')" class="tab-btn" data-tab="inventory">📦 库存</button>
+                        <button onclick="switchTab('config')" class="tab-btn" data-tab="config">⚙️ 配置</button>
+                    </nav>
+                </div>
+            </header>
+            
+            <main class="max-w-7xl mx-auto px-6 py-8">
+                <div id="alert-banner" class="mb-6"></div>
+                <div id="redline-alerts" class="space-y-3 mb-6"></div>
+                <div id="tab-overview" class="tab-content space-y-6 animate-in"></div>
+                <div id="tab-decision" class="tab-content hidden space-y-6"></div>
+                <div id="tab-profit" class="tab-content hidden space-y-6"></div>
+                <div id="tab-ads" class="tab-content hidden space-y-6"></div>
+                <div id="tab-inventory" class="tab-content hidden space-y-6"></div>
+                <div id="tab-config" class="tab-content hidden"></div>
+            </main>
+            
+            <footer class="border-t py-6 mt-8 no-print" style="border-color: var(--border-subtle);">
+                <div class="max-w-7xl mx-auto px-6 text-center text-sm text-tertiary">
+                    LGURT Business Dashboard v5.2 · 极简商务版
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="history-modal" class="modal-backdrop hidden flex items-center justify-center p-4">
+        <div class="modal-content max-w-2xl w-full">
+            <div class="modal-header"><span class="modal-title" id="modal-title">历史详情</span><span class="modal-close" onclick="closeHistoryModal()">×</span></div>
+            <div class="modal-body" id="modal-content"></div>
+            <div class="p-4 border-t flex gap-3 justify-end" style="border-color: var(--border-subtle);">
+                <button onclick="loadHistoryData(currentHistoryIndex)" class="btn btn-primary">加载到看板</button>
+                <button onclick="closeHistoryModal()" class="btn btn-secondary">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="sku-detail-modal" class="modal-backdrop hidden flex items-center justify-center p-4">
+        <div class="modal-content max-w-2xl w-full">
+            <div class="modal-header"><span class="modal-title" id="sku-modal-title">SKU 诊断</span><span class="modal-close" onclick="closeSkuModal()">×</span></div>
+            <div class="modal-body" id="sku-modal-content"></div>
+        </div>
+    </div>
+
+    <div id="pdf-tip-modal" class="modal-backdrop hidden flex items-center justify-center p-4">
+        <div class="modal-content max-w-md w-full p-6">
+            <h3 class="text-lg font-semibold mb-4">📄 PDF 导出</h3>
+            <p class="text-secondary mb-6">请在打印对话框中选择「另存为PDF」，建议取消页眉页脚以获得更好效果。</p>
+            <div class="flex gap-3 justify-end">
+                <button onclick="closePdfTipAndPrint()" class="btn btn-primary">开始导出</button>
+                <button onclick="document.getElementById('pdf-tip-modal').classList.add('hidden')" class="btn btn-secondary">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <iframe id="print-frame" style="position:absolute;width:0;height:0;border:none;"></iframe>
+
+<script>
+// ==================== 全局变量 ====================
+let D = null, allSkus = [], charts = {}, categories = [], currentHistoryIndex = -1;
+let skuRoles = {}, runId = '';
+let overviewSort = { field: 'op', asc: false };
+let overviewFilter = 'all';
+const HISTORY_KEY = 'lgurt_calc_history_v5';
+const SKU_ROLES_KEY = 'lgurt_sku_roles';
+const THEME_KEY = 'lgurt_theme';
+const ALGO_VERSION = 'v5.2';
+
+// ==================== 库存配置 ====================
+const INV_CONFIG = {
+    leadTimeDays: 35,
+    safetyDays: 30,
+    targetCoverDays: 90,
+    lowStockThreshold: 7,
+    overStockThreshold: 120,
+    minOrderQty: 1,
+    packRound: 1
+};
+
+// ==================== SKU角色配置 ====================
+const SKU_ROLE_CONFIG = {
+    profit: { name: '盈利款', color: 'success', allowedLoss: 0, stopLoss: 0, windowWeeks: null, desc: '不允许亏损，亏损必须修复或止损' },
+    traffic: { name: '引流款', color: 'info', allowedLoss: -0.10, stopLoss: -0.15, windowWeeks: 8, desc: '允许小幅亏损(-10%)，需证明流量价值' },
+    defense: { name: '防御款', color: 'warning', allowedLoss: -0.15, stopLoss: -0.25, windowWeeks: 4, desc: '允许更大亏损(-15%)，承担防御任务' },
+    test: { name: '测试款', color: 'neutral', allowedLoss: -0.30, stopLoss: -0.50, windowWeeks: 8, desc: '新品测试期，允许最大亏损(-30%)' }
+};
+
+// ==================== 筛选状态 ====================
+const FilterState = {
+    querySku: '',
+    get selectedSkus() {
+        if (!D || !D.skus) return [];
+        let result = D.skus;
+        if (this.querySku) {
+            const q = this.querySku.toLowerCase();
+            result = result.filter(s => s.sku.toLowerCase().includes(q) || s.name.toLowerCase().includes(q) || s.asin.toLowerCase().includes(q));
+        }
+        return result;
+    }
+};
+
+// ==================== Theme Toggle ====================
+function toggleTheme() {
+    const html = document.documentElement;
+    const isDark = html.classList.contains('theme-dark');
+    html.classList.toggle('theme-dark', !isDark);
+    html.classList.toggle('theme-light', isDark);
+    localStorage.setItem(THEME_KEY, isDark ? 'light' : 'dark');
+    document.querySelector('.theme-toggle').textContent = isDark ? '☀️' : '🌙';
+}
+(function initTheme() {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved === 'light') { document.documentElement.classList.replace('theme-dark', 'theme-light'); }
+})();
+
+// ==================== 库存计算 ====================
+function calcInventoryMetrics(sku, config = INV_CONFIG) {
+    const ful = sku.ful || 0, inb = sku.inb || 0, rsv = sku.rsv || 0, du = sku.du || 0;
+    if (du <= 0) return { sellableDOS: null, totalDOS: null, stockoutGap: null, status: 'no-sales', statusColor: 'neutral', overstockRisk: false, ropUnits: 0, targetUnits: 0, availableUnits: 0, orderQty: 0, hasReservedData: sku.rsv !== undefined };
+    
+    const sellableDOS = ful / du;
+    const totalDOS = (ful + inb - rsv) / du;
+    const stockoutGap = Math.max(0, config.leadTimeDays - sellableDOS);
+    
+    let status, statusColor;
+    if (sellableDOS < config.lowStockThreshold) { status = 'critical'; statusColor = 'danger'; }
+    else if (sellableDOS < config.leadTimeDays) { status = 'reorder-now'; statusColor = 'warning'; }
+    else if (sellableDOS < 15) { status = 'watch'; statusColor = 'warning'; }
+    else { status = 'healthy'; statusColor = 'success'; }
+    
+    const overstockRisk = totalDOS > config.overStockThreshold;
+    const ropUnits = (config.leadTimeDays + config.safetyDays) * du;
+    const targetUnits = config.targetCoverDays * du;
+    const availableUnits = ful + inb - rsv;
+    let orderQty = Math.max(0, targetUnits - availableUnits);
+    if (orderQty > 0) orderQty = Math.max(config.minOrderQty, Math.ceil(orderQty / config.packRound) * config.packRound);
+    
+    return { sellableDOS: rd(sellableDOS, 1), totalDOS: rd(totalDOS, 1), stockoutGap: rd(stockoutGap, 1), status, statusColor, overstockRisk, ropUnits: rd(ropUnits, 0), targetUnits: rd(targetUnits, 0), availableUnits: rd(availableUnits, 0), orderQty: rd(orderQty, 0), hasReservedData: sku.rsv !== undefined };
+}
+
+function getInvStatusBadge(m) {
+    const map = { 'critical': ['danger', '🔴 断货风险'], 'reorder-now': ['warning', '🟠 需补货'], 'watch': ['warning', '🟡 关注'], 'healthy': ['success', '🟢 健康'], 'no-sales': ['neutral', '⚫ 无销量'] };
+    const [c, t] = map[m.status] || ['neutral', m.status];
+    let html = `<span class="badge badge-${c}">${t}</span>`;
+    if (m.overstockRisk) html += ` <span class="badge badge-info">📦 积压</span>`;
+    return html;
+}
+
+function formatDOS(val) { return val === null ? '<span class="text-tertiary">—</span>' : val.toFixed(1) + '天'; }
+
+// ==================== SKU四象限 ====================
+function classifySkuQuadrant(sku) {
+    const adContrib = sku.adSales * sku.pm - sku.adSpend;
+    if (sku.pm > 0 && adContrib >= 0) return 'star';
+    if (sku.pm > 0 && adContrib < 0) return 'dog';
+    if (sku.pm <= 0 && adContrib >= 0) return 'question';
+    return 'eliminate';
+}
+
+function getQuadrantInfo(q) {
+    return { star: { name: '明星', icon: '🟢', color: 'success' }, question: { name: '问题', icon: '🟡', color: 'warning' }, dog: { name: '瘦狗', icon: '🟠', color: 'warning' }, eliminate: { name: '淘汰', icon: '🔴', color: 'danger' } }[q] || { name: '淘汰', icon: '🔴', color: 'danger' };
+}
+
+// ==================== SKU诊断 ====================
+function generateSkuDiagnosis(sku) {
+    const role = getSkuRole(sku.sku);
+    const rc = SKU_ROLE_CONFIG[role];
+    const q = classifySkuQuadrant(sku);
+    const qInfo = getQuadrantInfo(q);
+    const adContrib = sku.adSales * sku.pm - sku.adSpend;
+    const inv = calcInventoryMetrics(sku);
+    
+    let issues = [], actions = [], stopLoss = [];
+    let isHealthy = true;
+    
+    if (inv.status === 'critical') { issues.push({ type: 'critical', text: `可售库存仅${inv.sellableDOS?.toFixed(1)||0}天，低于${INV_CONFIG.lowStockThreshold}天阈值` }); actions.push({ priority: 0, text: '【紧急】立即补货或调拨', condition: '库存恢复前不做其他优化' }); isHealthy = false; }
+    else if (inv.status === 'reorder-now') { issues.push({ type: 'warning', text: `可售库存${inv.sellableDOS?.toFixed(1)||0}天，等不到${INV_CONFIG.leadTimeDays}天头程` }); actions.push({ priority: 1, text: '【重要】加急补货或考虑空运', condition: '评估断货成本vs空运成本' }); }
+    
+    if (sku.pm < 0) { issues.push({ type: 'critical', text: `定价毛利为负(${pct(sku.pm)})` }); isHealthy = false; if (role === 'profit') { actions.push({ priority: 1, text: '【诊断】检查成本结构：采购/头程/FBA', condition: '定位主要成本问题' }); stopLoss.push('若4周后定价毛利仍<0，进入退出流程'); } }
+    
+    if (sku.ar > sku.pm && sku.adSpend > 0) { issues.push({ type: 'critical', text: `广告占比(${pct(sku.ar)})超过毛利率(${pct(sku.pm)})` }); isHealthy = false; actions.push({ priority: 1, text: '【立即】执行Phase1砍无意义消耗', condition: '先砍ACOS>200%的词' }); }
+    if (adContrib < 0 && sku.adSpend > 50) { issues.push({ type: 'warning', text: `广告贡献利润为负($${adContrib.toFixed(0)})` }); actions.push({ priority: 2, text: '【优化】否定ACOS>50%词，降长尾竞价20%', condition: '2周后复盘效果' }); }
+    
+    if (sku.om < rc.allowedLoss) { issues.push({ type: 'warning', text: `经营毛利(${pct(sku.om)})低于${rc.name}容忍线(${pct(rc.allowedLoss)})` }); if (sku.om < rc.stopLoss) { issues.push({ type: 'critical', text: `触发止损线(${pct(rc.stopLoss)})` }); stopLoss.push(`${rc.name}止损线已触发，建议：${role === 'test' ? '降级为profit款' : '启动退出流程'}`); isHealthy = false; } }
+    
+    if (q === 'star' && inv.status !== 'critical' && sku.ar < sku.pm * 0.8 && (inv.sellableDOS || 0) > 30) actions.push({ priority: 3, text: '【放量】广告占比低于安全线80%，可增加预算10%/周', condition: '库存>30天且无断货风险' });
+    else if (q === 'dog') { actions.push({ priority: 2, text: '【广告优化】ACOS过高，执行Phase1+Phase2', condition: '目标4周内广告贡献转正' }); if (role === 'traffic') actions.push({ priority: 3, text: '【评估引流价值】检查是否为变体入口', condition: '若整体利润正可保留' }); }
+    else if (q === 'eliminate') { actions.push({ priority: 1, text: '【启动退出】定价亏+广告亏，双重问题', condition: '除非有战略价值' }); if ((inv.totalDOS || 0) > 60) actions.push({ priority: 2, text: '【清仓】库存' + (inv.totalDOS?.toFixed(0) || '?') + '天，目标8周清完', condition: '可降价促销' }); stopLoss.push('立即停止补货'); }
+    
+    actions.sort((a, b) => a.priority - b.priority);
+    return { sku: sku.sku, quadrant: q, qInfo, role, roleConfig: rc, issues, actions, stopLoss, isHealthy, inv, adContrib };
+}
+
+// ==================== 任务1: 广告Phase1/Phase2结构化输出 ====================
+function generateAdOptimizationPlan(s, skus) {
+    const currentAdRatio = s.ar, pricingMargin = s.pm, dailyRev = s.dRev, dailyFixed = s.mfDaily;
+    const breakEvenAdRatio = pricingMargin - (dailyRev > 0 ? dailyFixed / dailyRev : 0);
+    const targetAdRatio = Math.max(0, breakEvenAdRatio * 0.9);
+    const needReduce = currentAdRatio > targetAdRatio;
+    const gap = Math.max(0, currentAdRatio - targetAdRatio);
+    const adDependency = s.rev > 0 ? s.adSales / s.rev : 0;
+    
+    const adSkus = skus.filter(x => x.adSpend > 0);
+    
+    // ========== Phase 1: 无意义消耗清单（结构化数组） ==========
+    let phase1WasteList = [];
+    
+    // 1) 高花费零归因
+    adSkus.filter(x => x.adSpend > 30 && x.adSales === 0).forEach(x => {
+        phase1WasteList.push({ sku: x.sku, asin: x.asin, wasted_spend: x.adSpend, reason: '广告花费$' + x.adSpend.toFixed(0) + '但归因销售为0', suggested_action: 'pause', action_desc: '暂停该SKU所有广告投放' });
+    });
+    
+    // 2) ACOS极高 (>300%)
+    adSkus.filter(x => x.acos > 3 && x.adSpend > 20).forEach(x => {
+        if (!phase1WasteList.find(p => p.sku === x.sku)) {
+            phase1WasteList.push({ sku: x.sku, asin: x.asin, wasted_spend: x.adSpend * 0.8, reason: 'ACOS=' + pct(x.acos) + '极高，投入产出严重失衡', suggested_action: 'restructure', action_desc: '砍掉80%预算，仅保留核心词' });
+        }
+    });
+    
+    // 3) 广告占比>毛利率×2
+    adSkus.filter(x => x.ar > x.pm * 2 && x.adSpend > 30 && x.pm > 0).forEach(x => {
+        if (!phase1WasteList.find(p => p.sku === x.sku)) {
+            phase1WasteList.push({ sku: x.sku, asin: x.asin, wasted_spend: x.adSpend - x.rev * x.pm * 0.8, reason: '广告占比' + pct(x.ar) + '超过毛利率' + pct(x.pm) + '的2倍', suggested_action: 'negate', action_desc: '否定低效词，预算降至毛利80%' });
+        }
+    });
+    
+    const phase1TotalSavings = phase1WasteList.reduce((a, x) => a + (x.wasted_spend > 0 ? x.wasted_spend : 0), 0);
+    const phase1RatioReduction = s.rev > 0 ? phase1TotalSavings / s.rev : 0;
+    const afterPhase1Ratio = Math.max(0, currentAdRatio - phase1RatioReduction);
+    
+    // Phase 1 汇总动作
+    const phase1Actions = [];
+    const zeroAttrCount = phase1WasteList.filter(x => x.suggested_action === 'pause').length;
+    const restructureCount = phase1WasteList.filter(x => x.suggested_action === 'restructure').length;
+    const negateCount = phase1WasteList.filter(x => x.suggested_action === 'negate').length;
+    
+    if (zeroAttrCount > 0) phase1Actions.push({ action: '暂停零归因投放', skuCount: zeroAttrCount, spend: phase1WasteList.filter(x => x.suggested_action === 'pause').reduce((a, x) => a + x.wasted_spend, 0), impact: '销量影响≈0（本来就没有归因）' });
+    if (restructureCount > 0) phase1Actions.push({ action: '砍掉ACOS>300%投放80%', skuCount: restructureCount, spend: phase1WasteList.filter(x => x.suggested_action === 'restructure').reduce((a, x) => a + x.wasted_spend, 0), impact: '销量影响<3%（这些投放ROI极差）' });
+    if (negateCount > 0) phase1Actions.push({ action: '降超支SKU至毛利80%线', skuCount: negateCount, spend: phase1WasteList.filter(x => x.suggested_action === 'negate').reduce((a, x) => a + x.wasted_spend, 0), impact: '销量影响5-8%' });
+    
+    // ========== Phase 2: 增量优化周计划（结构化数组） ==========
+    const phase2Gap = Math.max(0, afterPhase1Ratio - targetAdRatio);
+    let phase2Plan = [];
+    
+    if (phase2Gap > 0) {
+        const weeklyReduction = 0.015; // 每周降1.5个百分点
+        const weeksNeeded = Math.ceil(phase2Gap / weeklyReduction);
+        let tempRatio = afterPhase1Ratio;
+        
+        for (let w = 1; w <= Math.min(weeksNeeded, 12); w++) {
+            const reduction = Math.min(weeklyReduction, tempRatio - targetAdRatio);
+            if (reduction <= 0) break;
+            tempRatio -= reduction;
+            
+            let actions = [];
+            if (w === 1) actions = ['降长尾词竞价20%', '否定7天内无转化词'];
+            else if (w === 2) actions = ['否定ACOS>目标50%词', '降低自动广告预算15%'];
+            else if (w <= 4) actions = ['收缩低效campaign预算', '暂停点击>50无订单词'];
+            else if (w <= 6) actions = ['结构性调整：合并相似campaign', '提升核心词占比'];
+            else actions = ['持续监控自然位变化', '若排名下滑暂停继续降幅'];
+            
+            phase2Plan.push({
+                week: w,
+                target_ad_ratio: rd(tempRatio, 4),
+                delta: rd(reduction, 4),
+                daily_budget: rd(dailyRev * tempRatio, 2),
+                actions: actions,
+                checkpoint: w % 2 === 0 ? '检查自然排名与自然单量' : null
+            });
+        }
+    }
+    
+    // ========== 销量影响度三档估算 ==========
+    const impactPerPoint = {
+        conservative: { rate: adDependency * 0.25, desc: '乐观场景：自然流量强，广告主要做增量' },
+        moderate: { rate: adDependency * 0.5, desc: '中性场景：广告与自然互相影响' },
+        aggressive: { rate: adDependency * 0.8, desc: '悲观场景：高度依赖广告拉动排名' }
+    };
+    
+    const totalReductionPct = gap * 100;
+    const salesImpact = {
+        conservative: rd(totalReductionPct * impactPerPoint.conservative.rate, 1),
+        moderate: rd(totalReductionPct * impactPerPoint.moderate.rate, 1),
+        aggressive: rd(totalReductionPct * impactPerPoint.aggressive.rate, 1)
+    };
+    
+    // 非线性风险阈值
+    const riskThreshold = 5;
+    const hasNonlinearRisk = totalReductionPct > riskThreshold;
+    const riskWarning = hasNonlinearRisk ? `累计降幅>${riskThreshold}%，可能触发排名下滑。建议分阶段执行，每阶段后观察3-5天自然位变化。` : null;
+    
+    return {
+        runId, algoVersion: ALGO_VERSION, generatedAt: new Date().toISOString(),
+        currentAdRatio, targetAdRatio, breakEvenAdRatio, needReduce, gap, adDependency,
+        phase1: {
+            wasteList: phase1WasteList,
+            totalSavings: phase1TotalSavings,
+            ratioReduction: phase1RatioReduction,
+            afterRatio: afterPhase1Ratio,
+            actions: phase1Actions,
+            salesImpactAssumption: 'Phase1针对"无意义消耗"，理论上这些花费对销量贡献极低或为零，因此砍掉后销量影响应<5%'
+        },
+        phase2: {
+            gap: phase2Gap,
+            plan: phase2Plan,
+            weeksNeeded: phase2Plan.length
+        },
+        impact: {
+            perPointPct: impactPerPoint,
+            totalPct: salesImpact,
+            formula: '每降1%广告占比 → 销量降 (广告依赖度×系数)%'
+        },
+        riskThreshold,
+        hasNonlinearRisk,
+        riskWarning
+    };
+}
+
+// ==================== 任务1补齐: SKU级广告建议（动作级） ====================
+function generateSkuAdSuggestion(sku) {
+    const suggestions = [];
+    const targetAcos = sku.pm > 0 ? sku.pm * 0.8 : 0.3; // 目标ACOS = 毛利率80%
+    
+    // 1. 无归因投放
+    if (sku.adSpend > 30 && sku.adSales === 0) {
+        suggestions.push({
+            priority: 0,
+            action_type: 'pause',
+            action_desc: '立即暂停所有广告活动',
+            reason: `花费$${sku.adSpend.toFixed(0)}无任何归因销售`,
+            expected_save: sku.adSpend,
+            sales_impact: '0%（本来就没有归因）'
+        });
+    }
+    
+    // 2. ACOS极高
+    else if (sku.acos > 2 && sku.adSpend > 20) {
+        const targetBudget = sku.adSales > 0 ? sku.adSales * targetAcos : sku.adSpend * 0.2;
+        suggestions.push({
+            priority: 1,
+            action_type: 'restructure',
+            action_desc: `预算从$${sku.adSpend.toFixed(0)}降至$${targetBudget.toFixed(0)}`,
+            reason: `ACOS ${pct(sku.acos)} 远超目标 ${pct(targetAcos)}`,
+            expected_save: sku.adSpend - targetBudget,
+            sales_impact: '<5%',
+            sub_actions: [
+                '暂停ACOS>300%的广告组',
+                '否定点击>30无转化的词',
+                '保留ACOS<目标的核心词'
+            ]
+        });
+    }
+    
+    // 3. 广告占比超过毛利率
+    else if (sku.ar > sku.pm && sku.adSpend > 0 && sku.pm > 0) {
+        const targetSpend = sku.rev * sku.pm * 0.8;
+        suggestions.push({
+            priority: 1,
+            action_type: 'reduce',
+            action_desc: `预算从$${sku.adSpend.toFixed(0)}降至$${targetSpend.toFixed(0)}`,
+            reason: `广告占比 ${pct(sku.ar)} > 毛利率 ${pct(sku.pm)}`,
+            expected_save: Math.max(0, sku.adSpend - targetSpend),
+            sales_impact: '5-10%',
+            sub_actions: [
+                '否定ACOS>目标50%的词',
+                '降低自动广告竞价20%',
+                '集中预算到ACOS最低的campaign'
+            ]
+        });
+    }
+    
+    // 4. 广告贡献为负但ACOS正常
+    else if (sku.adSales * sku.pm - sku.adSpend < 0 && sku.acos <= 1 && sku.adSpend > 50) {
+        suggestions.push({
+            priority: 2,
+            action_type: 'optimize',
+            action_desc: '优化广告结构，提升转化',
+            reason: `广告贡献为负$${(sku.adSales * sku.pm - sku.adSpend).toFixed(0)}`,
+            expected_save: sku.adSpend * 0.2,
+            sales_impact: '2-5%',
+            sub_actions: [
+                '分析转化率低的原因（listing/竞争/出价）',
+                '测试提高竞价20%看是否改善转化',
+                '检查是否需要优化listing图片/标题'
+            ]
+        });
+    }
+    
+    // 5. 健康状态，可放量
+    else if (sku.acos > 0 && sku.acos < targetAcos * 0.8 && sku.ar < sku.pm * 0.7) {
+        suggestions.push({
+            priority: 3,
+            action_type: 'scale_up',
+            action_desc: `可增加预算10-20%`,
+            reason: `ACOS ${pct(sku.acos)} 低于目标，广告占比健康`,
+            expected_save: 0,
+            sales_impact: '+5-15%增量',
+            sub_actions: [
+                '提高核心词竞价10%',
+                '开启新的自动广告测试词',
+                '增加预算到表现最好的campaign'
+            ]
+        });
+    }
+    
+    // 6. 无广告投放
+    else if (sku.adSpend === 0 && sku.rev > 0) {
+        suggestions.push({
+            priority: 4,
+            action_type: 'evaluate',
+            action_desc: '评估是否需要投放广告',
+            reason: '当前无广告投放',
+            expected_save: 0,
+            sales_impact: 'N/A',
+            sub_actions: [
+                '若自然排名稳定可继续观察',
+                '若想扩量可开启自动广告测试',
+                '建议日预算从$5开始'
+            ]
+        });
+    }
+    
+    return {
+        sku: sku.sku,
+        asin: sku.asin,
+        current_spend: sku.adSpend,
+        current_acos: sku.acos,
+        current_ar: sku.ar,
+        target_acos: targetAcos,
+        suggestions: suggestions,
+        primary_action: suggestions[0] || null
+    };
+}
+
+// ==================== 任务3: 统一ResultBundle ====================
+function buildResultBundle(s, skus, plan) {
+    const timestamp = new Date().toISOString();
+    const invData = skus.map(sku => ({ ...sku, inv: calcInventoryMetrics(sku) }));
+    const diagnostics = skus.map(sku => generateSkuDiagnosis(sku));
+    const adSuggestions = skus.filter(x => x.adSpend > 0 || x.rev > 500).map(sku => generateSkuAdSuggestion(sku));
+    
+    return {
+        meta: {
+            runId,
+            algoVersion: ALGO_VERSION,
+            generatedAt: timestamp,
+            dataPeriodDays: s.days,
+            skuCount: skus.length,
+            filterApplied: s.isFiltered || false
+        },
+        summary: {
+            rev: s.rev,
+            units: s.units,
+            pp: s.pp,
+            pm: s.pm,
+            adSpend: s.adSpend,
+            adSales: s.adSales,
+            ar: s.ar,
+            op: s.op,
+            om: s.om,
+            np: s.np,
+            npm: s.npm,
+            acos: s.acos,
+            roas: s.roas,
+            adDependency: plan.adDependency,
+            mfPeriod: s.mfPeriod,
+            dailyBreakEven: s.dailyBreakEven
+        },
+        skus: skus.map(sku => ({
+            ...sku,
+            quadrant: classifySkuQuadrant(sku),
+            role: getSkuRole(sku.sku),
+            inv: calcInventoryMetrics(sku)
+        })),
+        ads: {
+            storePlan: plan,
+            skuSuggestions: adSuggestions
+        },
+        inventory: invData.map(x => ({
+            sku: x.sku,
+            asin: x.asin,
+            ful: x.ful,
+            inb: x.inb,
+            rsv: x.rsv || 0,
+            du: x.du,
+            ...x.inv
+        })),
+        diagnostics: diagnostics,
+        config: {
+            invConfig: { ...INV_CONFIG },
+            roleConfig: { ...SKU_ROLE_CONFIG }
+        },
+        checksums: {
+            totalRev: skus.reduce((a, x) => a + x.rev, 0),
+            totalOp: skus.reduce((a, x) => a + x.op, 0),
+            summaryRev: s.rev,
+            summaryOp: s.op,
+            isConsistent: Math.abs(skus.reduce((a, x) => a + x.rev, 0) - s.rev) < 1
+        }
+    };
+}
+
+// ==================== 筛选汇总 ====================
+function calcFilteredSummary(filteredSkus) {
+    if (!D || filteredSkus.length === 0) return { rev: 0, units: 0, pp: 0, op: 0, np: 0, adSpend: 0, adSales: 0, skuCount: 0, totalSkuCount: D ? D.skus.length : 0, isFiltered: true, isEmpty: true };
+    const t = filteredSkus.reduce((a, s) => ({ rev: a.rev + s.rev, units: a.units + s.units, ref: a.ref + s.ref, fba: a.fba + s.fba, cogs: a.cogs + s.cogs, frt: a.frt + s.frt, rfmFee: a.rfmFee + s.rfmFee, pp: a.pp + s.pp, adSpend: a.adSpend + s.adSpend, op: a.op + s.op, imp: a.imp + (s.adImp || 0), clk: a.clk + (s.adClk || 0), adSales: a.adSales + s.adSales }), { rev: 0, units: 0, ref: 0, fba: 0, cogs: 0, frt: 0, rfmFee: 0, pp: 0, adSpend: 0, op: 0, imp: 0, clk: 0, adSales: 0 });
+    const days = D.s.days, ratio = filteredSkus.length / D.skus.length, mfPeriod = D.s.mfPeriod * ratio;
+    return { ...t, days, dRev: t.rev / days, pm: t.rev > 0 ? t.pp / t.rev : 0, ar: t.rev > 0 ? t.adSpend / t.rev : 0, om: t.rev > 0 ? t.op / t.rev : 0, np: t.op - mfPeriod, npm: t.rev > 0 ? (t.op - mfPeriod) / t.rev : 0, acos: t.adSales > 0 ? t.adSpend / t.adSales : 0, roas: t.adSpend > 0 ? t.adSales / t.adSpend : 0, ctr: t.imp > 0 ? t.clk / t.imp : 0, cpc: t.clk > 0 ? t.adSpend / t.clk : 0, mfPeriod, mfMonthly: D.s.mfMonthly, mfDaily: D.s.mfDaily, dailyBreakEven: t.op / days > 0 ? D.s.mfDaily / (t.op / t.rev) : 0, skuCount: filteredSkus.length, totalSkuCount: D.skus.length, isFiltered: filteredSkus.length !== D.skus.length, isEmpty: false };
+}
+
+function applyFilters() { const skus = FilterState.selectedSkus; return { skus, summary: calcFilteredSummary(skus) }; }
+
+// ==================== 初始化 ====================
+const uz = document.getElementById('upload-zone'), fi = document.getElementById('file-input');
+uz.addEventListener('dragover', e => { e.preventDefault(); uz.classList.add('dragover'); });
+uz.addEventListener('dragleave', () => uz.classList.remove('dragover'));
+uz.addEventListener('drop', e => { e.preventDefault(); uz.classList.remove('dragover'); if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
+uz.addEventListener('click', () => fi.click());
+fi.addEventListener('change', e => { if (e.target.files.length) handleFile(e.target.files[0]); });
+
+let searchDebounce;
+document.getElementById('sku-search').addEventListener('input', e => {
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => { FilterState.querySku = e.target.value.trim(); renderAllWithFilter(); }, 200);
+});
+
+document.getElementById('lead-time-select').addEventListener('change', e => {
+    INV_CONFIG.leadTimeDays = parseInt(e.target.value);
+    if (D) renderAllWithFilter();
+});
+
+loadHistory();
+loadSkuRoles();
+
+async function handleFile(file) {
+    document.getElementById('upload-status').classList.remove('hidden');
+    document.getElementById('upload-error').classList.add('hidden');
+    try {
+        INV_CONFIG.leadTimeDays = parseInt(document.getElementById('lead-time-select').value);
+        const data = await file.arrayBuffer();
+        const wb = XLSX.read(data);
+        D = processWorkbook(wb);
+        runId = 'run_' + Date.now().toString(36);
+        allSkus = D.skus;
+        categories = [...new Set(allSkus.map(x => x.cat).filter(x => x))];
+        saveHistory(D);
+        FilterState.querySku = '';
+        document.getElementById('sku-search').value = '';
+        overviewFilter = 'all';
+        renderAllWithFilter();
+        document.getElementById('upload-section').classList.add('hidden');
+        document.getElementById('dashboard-section').classList.remove('hidden');
+    } catch (err) {
+        document.getElementById('upload-error').textContent = '❌ ' + err.message;
+        document.getElementById('upload-error').classList.remove('hidden');
+    } finally { document.getElementById('upload-status').classList.add('hidden'); }
+}
+
+function loadSkuRoles() { skuRoles = JSON.parse(localStorage.getItem(SKU_ROLES_KEY) || '{}'); }
+function saveSkuRoles() { localStorage.setItem(SKU_ROLES_KEY, JSON.stringify(skuRoles)); }
+function setSkuRole(sku, role) { skuRoles[sku] = role; saveSkuRoles(); renderAllWithFilter(); }
+function getSkuRole(sku) { return skuRoles[sku] || 'profit'; }
+
+function loadHistory() {
+    const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    const section = document.getElementById('history-section'), list = document.getElementById('history-list');
+    if (history.length > 0) {
+        section.classList.remove('hidden');
+        list.innerHTML = history.map((h, idx) => `<div class="panel p-3 flex justify-between items-center cursor-pointer hover:border-blue-500" onclick="showHistoryDetail(${idx})"><div><span class="text-tertiary text-sm">${h.time}</span><span class="text-primary ml-2">${h.s.days}天</span><span class="text-tertiary ml-2">${h.config?.leadTimeDays||35}天头程</span><span class="ml-2 ${h.s.np >= 0 ? 'text-success' : 'text-danger'}">${h.s.np >= 0 ? '+' : ''}$${h.s.np.toFixed(0)}</span></div><button onclick="event.stopPropagation();deleteHistory(${idx})" class="text-danger text-xs opacity-50 hover:opacity-100">删除</button></div>`).join('');
+    } else { section.classList.add('hidden'); }
+}
+
+function saveHistory(data) {
+    let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    history.unshift({ time: new Date().toLocaleString('zh-CN'), s: { ...data.s }, skus: data.skus.map(sku => ({ ...sku })), fc: { ...data.fc }, config: { ...INV_CONFIG }, runId, algoVersion: ALGO_VERSION });
+    if (history.length > 10) history = history.slice(0, 10);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+}
+
+function deleteHistory(idx) { if (confirm('确定删除？')) { let h = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); h.splice(idx, 1); localStorage.setItem(HISTORY_KEY, JSON.stringify(h)); loadHistory(); } }
+function showHistoryDetail(idx) { const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); if (idx >= history.length) return; currentHistoryIndex = idx; const h = history[idx]; document.getElementById('modal-title').textContent = `历史 - ${h.time}`; document.getElementById('modal-content').innerHTML = `<div class="grid grid-cols-2 md:grid-cols-4 gap-4">${[{ l: '周期', v: h.s.days + '天' }, { l: '头程', v: (h.config?.leadTimeDays || 35) + '天' }, { l: '销售', v: '$' + h.s.rev.toFixed(0) }, { l: '净利润', v: '$' + h.s.np.toFixed(0) }].map(x => `<div class="kpi-card"><p class="kpi-label">${x.l}</p><p class="kpi-value">${x.v}</p></div>`).join('')}</div>`; document.getElementById('history-modal').classList.remove('hidden'); }
+function closeHistoryModal() { document.getElementById('history-modal').classList.add('hidden'); currentHistoryIndex = -1; }
+function loadHistoryData(idx) { const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); if (idx >= history.length) return; D = { s: history[idx].s, skus: history[idx].skus, fc: history[idx].fc }; if (history[idx].config) { Object.assign(INV_CONFIG, history[idx].config); document.getElementById('lead-time-select').value = INV_CONFIG.leadTimeDays; } runId = history[idx].runId || 'run_' + Date.now().toString(36); allSkus = D.skus; closeHistoryModal(); FilterState.querySku = ''; document.getElementById('sku-search').value = ''; renderAllWithFilter(); document.getElementById('upload-section').classList.add('hidden'); document.getElementById('dashboard-section').classList.remove('hidden'); }
+function clearAllHistory() { if (confirm('清除所有？')) { localStorage.removeItem(HISTORY_KEY); loadHistory(); } }
+
+function updateFilterBadge(summary) {
+    const badge = document.getElementById('filter-badge');
+    if (summary.isFiltered && !summary.isEmpty) { badge.innerHTML = `<span class="badge badge-info">${summary.skuCount}/${summary.totalSkuCount} SKU</span>`; badge.classList.remove('hidden'); }
+    else { badge.classList.add('hidden'); }
+}
+
+// ==================== 统一渲染入口 ====================
+function renderAllWithFilter() {
+    const { skus, summary: s } = applyFilters();
+    updateFilterBadge(s);
+    document.getElementById('period-label').textContent = `周期 ${D.s.days}天 · 头程 ${INV_CONFIG.leadTimeDays}天 · Run ${runId}`;
+    
+    const al = document.getElementById('alert-banner');
+    if (s.isEmpty) { al.innerHTML = `<div class="alert alert-info"><span>未找到匹配的SKU</span></div>`; }
+    else { al.innerHTML = `<div class="alert ${s.np < 0 ? 'alert-critical' : 'alert-success'}"><span class="text-2xl">${s.np < 0 ? '⚠️' : '✅'}</span><div><p class="font-semibold">${s.isFiltered ? '筛选范围' : '全店'}${D.s.days}天${s.np < 0 ? '亏损' : '盈利'}: ${$(Math.abs(s.np))}</p><p class="text-secondary text-sm">经营毛利 ${$(s.op)} − 固定成本 ${$(s.mfPeriod)} = 净利润 ${$(s.np)}</p></div></div>`; }
+    
+    renderRedlineAlerts(s, skus);
+    renderOverview(skus, s);
+    renderDecisionCenter(skus, s);
+    renderProfit(skus, s);
+    renderAds(skus, s);
+    renderInventory(skus, s);
+    renderConfig(skus, s);
+    renderCharts(s, skus);
+}
+
+function renderRedlineAlerts(s, skus) {
+    let alerts = [];
+    if (s.ar > s.pm && !s.isEmpty) alerts.push({ level: 'critical', text: `广告占比 ${pct(s.ar)} 超过毛利率 ${pct(s.pm)}`, action: '执行Phase1砍无意义消耗' });
+    if (s.np < 0 && !s.isEmpty) alerts.push({ level: 'warning', text: `净利润为负 $${s.np.toFixed(0)}`, action: '全面复盘成本与广告' });
+    const critical = skus.filter(x => calcInventoryMetrics(x).status === 'critical');
+    if (critical.length > 0) alerts.push({ level: 'warning', text: `${critical.length} 个SKU可售库存 < ${INV_CONFIG.lowStockThreshold}天`, action: '紧急补货' });
+    document.getElementById('redline-alerts').innerHTML = alerts.map(a => `<div class="alert alert-${a.level}"><span class="text-xl">${a.level === 'critical' ? '🚨' : '⚠️'}</span><div class="flex-1"><span>${a.text}</span></div><span class="text-tertiary text-sm">${a.action}</span></div>`).join('');
+}
+
+// ==================== 概览渲染 ====================
+function renderOverview(skus, s) {
+    if (s.isEmpty) { document.getElementById('tab-overview').innerHTML = '<div class="panel p-8 text-center text-secondary">无匹配SKU</div>'; return; }
+    const filterNote = s.isFiltered ? `<div class="alert alert-info mb-4"><span>筛选结果 (${s.skuCount}/${s.totalSkuCount} SKU)</span></div>` : '';
+    
+    let displaySkus = [...skus];
+    if (overviewFilter === 'loss') displaySkus = skus.filter(x => x.op < 0);
+    else if (overviewFilter === 'high-ad') displaySkus = skus.filter(x => x.ar > x.pm && x.adSpend > 0);
+    else if (overviewFilter === 'low-inv') displaySkus = skus.filter(x => { const m = calcInventoryMetrics(x); return m.status === 'critical' || m.status === 'reorder-now'; });
+    else if (overviewFilter === 'no-sales') displaySkus = skus.filter(x => x.du <= 0);
+    
+    displaySkus.sort((a, b) => {
+        let va, vb;
+        if (overviewSort.field === 'rev') { va = a.rev; vb = b.rev; }
+        else if (overviewSort.field === 'op') { va = a.op; vb = b.op; }
+        else if (overviewSort.field === 'ar') { va = a.ar; vb = b.ar; }
+        else if (overviewSort.field === 'pm') { va = a.pm; vb = b.pm; }
+        else if (overviewSort.field === 'dos') { const ma = calcInventoryMetrics(a), mb = calcInventoryMetrics(b); va = ma.sellableDOS ?? 9999; vb = mb.sellableDOS ?? 9999; }
+        else { va = a.op; vb = b.op; }
+        return overviewSort.asc ? va - vb : vb - va;
+    });
+    
+    const pro = skus.filter(x => x.op > 0), los = skus.filter(x => x.op < 0), noSales = skus.filter(x => x.du <= 0);
+    
+    document.getElementById('tab-overview').innerHTML = filterNote + `
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div class="kpi-card"><p class="kpi-label">净销售</p><p class="kpi-value positive">${$(s.rev)}</p><p class="kpi-sub">${s.units} 单</p></div>
+        <div class="kpi-card"><p class="kpi-label">定价毛利</p><p class="kpi-value">${$(s.pp)}</p><p class="kpi-sub">${pct(s.pm)}</p></div>
+        <div class="kpi-card"><p class="kpi-label">广告花费</p><p class="kpi-value" style="color: var(--accent-warning);">${$(s.adSpend)}</p><p class="kpi-sub">${pct(s.ar)}</p></div>
+        <div class="kpi-card"><p class="kpi-label">净利润</p><p class="kpi-value ${s.np >= 0 ? 'positive' : 'negative'}">${$(s.np)}</p><p class="kpi-sub">${pct(s.npm)}</p></div>
+        ${s.om > 0 ? `<div class="kpi-card"><p class="kpi-label">日盈亏平衡</p><p class="kpi-value" style="color: var(--accent-info);">${$(s.dailyBreakEven)}</p></div>` : ''}
+    </div>
+    <div class="grid md:grid-cols-2 gap-6">
+        <div class="panel"><div class="panel-header"><span class="font-semibold">Top 10 SKU 经营利润</span></div><div class="panel-body"><canvas id="chart1" height="280"></canvas></div></div>
+        <div class="panel"><div class="panel-header"><span class="font-semibold">成本结构</span></div><div class="panel-body"><canvas id="chart2" height="280"></canvas></div></div>
+    </div>
+    <div class="panel">
+        <div class="panel-header flex justify-between items-center flex-wrap gap-3">
+            <span class="font-semibold">SKU 健康度 <span class="text-secondary font-normal">(盈利 ${pro.length} / 亏损 ${los.length} / 无销量 ${noSales.length})</span></span>
+            <div class="flex gap-2 flex-wrap">
+                <span class="chip ${overviewFilter === 'all' ? 'active' : ''}" onclick="setOverviewFilter('all')">全部 (${skus.length})</span>
+                <span class="chip ${overviewFilter === 'loss' ? 'active' : ''}" onclick="setOverviewFilter('loss')">亏损 (${los.length})</span>
+                <span class="chip ${overviewFilter === 'high-ad' ? 'active' : ''}" onclick="setOverviewFilter('high-ad')">高广告</span>
+                <span class="chip ${overviewFilter === 'low-inv' ? 'active' : ''}" onclick="setOverviewFilter('low-inv')">低库存</span>
+                <span class="chip ${overviewFilter === 'no-sales' ? 'active' : ''}" onclick="setOverviewFilter('no-sales')">无销量</span>
+            </div>
+        </div>
+        <div class="overflow-auto" style="max-height: 400px;">
+            <table class="data-table">
+                <thead><tr><th>SKU</th><th class="text-right sortable" onclick="setOverviewSort('rev')">销售额 ${overviewSort.field === 'rev' ? (overviewSort.asc ? '↑' : '↓') : ''}</th><th class="text-right sortable" onclick="setOverviewSort('pm')">毛利率 ${overviewSort.field === 'pm' ? (overviewSort.asc ? '↑' : '↓') : ''}</th><th class="text-right sortable" onclick="setOverviewSort('ar')">广告占比 ${overviewSort.field === 'ar' ? (overviewSort.asc ? '↑' : '↓') : ''}</th><th class="text-right sortable" onclick="setOverviewSort('op')">经营利润 ${overviewSort.field === 'op' ? (overviewSort.asc ? '↑' : '↓') : ''}</th><th class="text-right sortable" onclick="setOverviewSort('dos')">Sellable DOS ${overviewSort.field === 'dos' ? (overviewSort.asc ? '↑' : '↓') : ''}</th><th>库存状态</th></tr></thead>
+                <tbody>${displaySkus.map(r => { const inv = calcInventoryMetrics(r); return `<tr><td class="text-primary">${r.sku.substring(0, 20)}</td><td class="text-right">${$(r.rev)}</td><td class="text-right ${r.pm < 0 ? 'negative' : ''}">${pct(r.pm)}</td><td class="text-right ${r.ar > r.pm ? 'negative' : ''}">${pct(r.ar)}</td><td class="text-right ${r.op >= 0 ? 'positive' : 'negative'}">${$(r.op)}</td><td class="text-right ${inv.statusColor === 'danger' ? 'negative' : ''}">${formatDOS(inv.sellableDOS)}</td><td>${getInvStatusBadge(inv)}</td></tr>`; }).join('')}</tbody>
+            </table>
+        </div>
+    </div>`;
+}
+
+function setOverviewFilter(f) { overviewFilter = f; renderAllWithFilter(); }
+function setOverviewSort(field) { if (overviewSort.field === field) overviewSort.asc = !overviewSort.asc; else { overviewSort.field = field; overviewSort.asc = false; } renderAllWithFilter(); }
+
+// ==================== 决策中心渲染 ====================
+function renderDecisionCenter(skus, s) {
+    if (s.isEmpty) { document.getElementById('tab-decision').innerHTML = '<div class="panel p-8 text-center text-secondary">无匹配SKU</div>'; return; }
+    const plan = generateAdOptimizationPlan(s, skus);
+    const quadrants = { star: [], question: [], dog: [], eliminate: [] };
+    skus.forEach(sku => { quadrants[classifySkuQuadrant(sku)].push(sku); });
+    const problemSkus = skus.filter(sku => { const d = generateSkuDiagnosis(sku); return !d.isHealthy || d.issues.length > 0; }).slice(0, 30);
+    
+    document.getElementById('tab-decision').innerHTML = `
+    <div class="grid md:grid-cols-3 gap-4">
+        <div class="kpi-card"><p class="kpi-label">广告贡献利润</p><p class="kpi-value ${s.adSales * s.pm - s.adSpend >= 0 ? 'positive' : 'negative'}">$${(s.adSales * s.pm - s.adSpend).toFixed(0)}</p></div>
+        <div class="kpi-card"><p class="kpi-label">广告依赖度</p><p class="kpi-value" style="color: ${plan.adDependency > 0.7 ? 'var(--accent-warning)' : 'inherit'};">${pct(plan.adDependency)}</p></div>
+        <div class="kpi-card"><p class="kpi-label">需调整幅度</p><p class="kpi-value" style="color: ${plan.needReduce ? 'var(--accent-warning)' : 'var(--accent-success)'};">${plan.needReduce ? '-' + (plan.gap * 100).toFixed(1) + '点' : '无需'}</p></div>
+    </div>
+    <div class="panel"><div class="panel-header"><span class="font-semibold">SKU 四象限</span></div><div class="panel-body"><div class="grid md:grid-cols-2 gap-4"><div class="quadrant-grid"><div class="quadrant-cell" style="background: rgba(48,209,88,0.1);"><span class="font-semibold" style="color: var(--accent-success);">🟢 明星 ${quadrants.star.length}</span><p class="text-tertiary text-sm mt-1">可放量</p></div><div class="quadrant-cell" style="background: rgba(255,159,10,0.1);"><span class="font-semibold" style="color: var(--accent-warning);">🟡 问题 ${quadrants.question.length}</span><p class="text-tertiary text-sm mt-1">诊断成本</p></div><div class="quadrant-cell" style="background: rgba(255,159,10,0.1);"><span class="font-semibold" style="color: var(--accent-warning);">🟠 瘦狗 ${quadrants.dog.length}</span><p class="text-tertiary text-sm mt-1">优化广告</p></div><div class="quadrant-cell" style="background: rgba(255,69,58,0.1);"><span class="font-semibold" style="color: var(--accent-danger);">🔴 淘汰 ${quadrants.eliminate.length}</span><p class="text-tertiary text-sm mt-1">考虑退出</p></div></div><div><canvas id="quadrant-chart" height="160"></canvas></div></div></div></div>
+    <div class="panel"><div class="panel-header"><span class="font-semibold">📋 SKU 角色说明</span></div><div class="panel-body"><div class="grid md:grid-cols-4 gap-4">${Object.entries(SKU_ROLE_CONFIG).map(([k, v]) => `<div class="p-4 rounded-lg" style="background: var(--bg-hover);"><p class="font-semibold badge badge-${v.color}">${v.name}</p><p class="text-tertiary text-xs mt-2">允许亏损: ${pct(v.allowedLoss)}</p><p class="text-tertiary text-xs">止损线: ${pct(v.stopLoss)}</p>${v.windowWeeks ? `<p class="text-tertiary text-xs">窗口: ${v.windowWeeks}周</p>` : ''}<p class="text-secondary text-xs mt-2">${v.desc}</p></div>`).join('')}</div></div></div>
+    <div class="panel"><div class="panel-header"><span class="font-semibold">🔍 SKU 诊断与建议 <span class="text-secondary font-normal">(${problemSkus.length} 个需关注)</span></span></div><div class="panel-body"><div class="overflow-auto" style="max-height: 400px;"><table class="data-table"><thead><tr><th>SKU</th><th>象限</th><th>角色</th><th class="text-right">毛利率</th><th class="text-right">广告贡献</th><th>问题数</th><th>首要建议</th><th>操作</th></tr></thead><tbody>${problemSkus.map(sku => { const d = generateSkuDiagnosis(sku); const firstAction = d.actions[0]?.text.substring(0, 25) || '-'; return `<tr><td class="text-primary">${sku.sku.substring(0, 15)}</td><td><span class="badge badge-${d.qInfo.color}">${d.qInfo.icon} ${d.qInfo.name}</span></td><td><select onchange="setSkuRole('${sku.sku}',this.value)" class="input text-xs py-1 px-2">${Object.entries(SKU_ROLE_CONFIG).map(([k, v]) => `<option value="${k}" ${d.role === k ? 'selected' : ''}>${v.name}</option>`).join('')}</select></td><td class="text-right ${sku.pm >= 0 ? 'positive' : 'negative'}">${pct(sku.pm)}</td><td class="text-right ${d.adContrib >= 0 ? 'positive' : 'negative'}">$${d.adContrib.toFixed(0)}</td><td>${d.isHealthy ? '<span class="positive">✓</span>' : `<span class="negative">${d.issues.length}个</span>`}</td><td class="text-tertiary text-xs">${firstAction}...</td><td><button onclick="showSkuDetail('${sku.sku}')" class="btn btn-secondary text-xs py-1 px-2">诊断</button></td></tr>`; }).join('')}</tbody></table></div></div></div>`;
+    
+    setTimeout(() => {
+        if (charts.quadrant) charts.quadrant.destroy();
+        const ctx = document.getElementById('quadrant-chart');
+        if (ctx) charts.quadrant = new Chart(ctx, { type: 'doughnut', data: { labels: ['明星', '问题', '瘦狗', '淘汰'], datasets: [{ data: [quadrants.star.length, quadrants.question.length, quadrants.dog.length, quadrants.eliminate.length], backgroundColor: ['#30d158', '#ff9f0a', '#ff9f0a', '#ff453a'] }] }, options: { plugins: { legend: { position: 'right', labels: { color: getComputedStyle(document.body).getPropertyValue('--text-secondary') } } } } });
+    }, 100);
+}
+
+function showSkuDetail(skuCode) {
+    const sku = allSkus.find(x => x.sku === skuCode);
+    if (!sku) return;
+    const d = generateSkuDiagnosis(sku);
+    document.getElementById('sku-modal-title').textContent = `SKU 诊断 - ${skuCode}`;
+    document.getElementById('sku-modal-content').innerHTML = `
+    <div class="space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+            <div class="kpi-card"><p class="kpi-label">象限</p><p class="kpi-value"><span class="badge badge-${d.qInfo.color}">${d.qInfo.icon} ${d.qInfo.name}</span></p></div>
+            <div class="kpi-card"><p class="kpi-label">角色</p><p class="kpi-value"><span class="badge badge-${d.roleConfig.color}">${d.roleConfig.name}</span></p><p class="text-tertiary text-xs mt-1">${d.roleConfig.desc.substring(0, 30)}...</p></div>
+        </div>
+        <div class="grid grid-cols-4 gap-3">
+            <div class="kpi-card"><p class="kpi-label">销售额</p><p class="kpi-value text-lg">${$(sku.rev)}</p></div>
+            <div class="kpi-card"><p class="kpi-label">毛利率</p><p class="kpi-value text-lg ${sku.pm >= 0 ? 'positive' : 'negative'}">${pct(sku.pm)}</p></div>
+            <div class="kpi-card"><p class="kpi-label">广告占比</p><p class="kpi-value text-lg ${sku.ar > sku.pm ? 'negative' : ''}">${pct(sku.ar)}</p></div>
+            <div class="kpi-card"><p class="kpi-label">广告贡献</p><p class="kpi-value text-lg ${d.adContrib >= 0 ? 'positive' : 'negative'}">$${d.adContrib.toFixed(0)}</p></div>
+        </div>
+        ${d.issues.length > 0 ? `<div class="alert alert-critical"><div><p class="font-semibold">⚠️ 问题诊断 (${d.issues.length})</p><ul class="mt-2 space-y-1">${d.issues.map(i => `<li class="text-sm">${i.type === 'critical' ? '🔴' : '🟠'} ${i.text}</li>`).join('')}</ul></div></div>` : '<div class="alert alert-success"><span class="positive">✅ 未发现问题</span></div>'}
+        ${d.actions.length > 0 ? `<div class="alert alert-info"><div><p class="font-semibold">📋 建议动作 (${d.actions.length})</p><div class="mt-2 space-y-2">${d.actions.map(a => `<div class="pb-2 border-b" style="border-color: var(--border-subtle);"><p class="text-primary">${a.text}</p><p class="text-tertiary text-xs mt-1">前提: ${a.condition}</p></div>`).join('')}</div></div></div>` : ''}
+        ${d.stopLoss.length > 0 ? `<div class="alert alert-warning"><div><p class="font-semibold">🛑 止损条件</p><ul class="mt-2 space-y-1">${d.stopLoss.map(s => `<li class="text-sm">• ${s}</li>`).join('')}</ul></div></div>` : ''}
+        <div class="panel"><div class="panel-body"><p class="font-semibold mb-2">📦 库存状态</p><div class="grid grid-cols-3 gap-3 text-sm"><div><span class="text-tertiary">可售:</span> ${sku.ful}</div><div><span class="text-tertiary">在途:</span> ${sku.inb}</div><div><span class="text-tertiary">Sellable DOS:</span> <span class="${d.inv.statusColor === 'danger' ? 'negative' : ''}">${formatDOS(d.inv.sellableDOS)}</span></div></div><div class="mt-2">${getInvStatusBadge(d.inv)}</div></div></div>
+    </div>`;
+    document.getElementById('sku-detail-modal').classList.remove('hidden');
+}
+function closeSkuModal() { document.getElementById('sku-detail-modal').classList.add('hidden'); }
+
+// ==================== 利润分析渲染 ====================
+function renderProfit(skus, s) {
+    if (s.isEmpty) { document.getElementById('tab-profit').innerHTML = '<div class="panel p-8 text-center text-secondary">无匹配SKU</div>'; return; }
+    const tc = s.ref + s.fba + s.cogs + s.frt + s.rfmFee;
+    const pro = skus.filter(x => x.op > 0).sort((a, b) => b.op - a.op);
+    const los = skus.filter(x => x.op < 0).sort((a, b) => a.op - b.op);
+    
+    document.getElementById('tab-profit').innerHTML = `
+    <div class="grid md:grid-cols-4 gap-4">
+        <div class="kpi-card"><p class="kpi-label">净销售</p><p class="kpi-value positive">${$(s.rev)}</p></div>
+        <div class="kpi-card"><p class="kpi-label">总成本</p><p class="kpi-value" style="color: var(--accent-warning);">${$(tc)}</p></div>
+        <div class="kpi-card"><p class="kpi-label">定价毛利</p><p class="kpi-value">${$(s.pp)}</p></div>
+        <div class="kpi-card"><p class="kpi-label">净利润</p><p class="kpi-value ${s.np >= 0 ? 'positive' : 'negative'}">${$(s.np)}</p></div>
+    </div>
+    <div class="panel"><div class="panel-header"><span class="font-semibold">利润瀑布</span></div><div class="panel-body"><canvas id="chart3" height="250"></canvas></div></div>
+    <div class="grid md:grid-cols-2 gap-4">
+        <div class="panel" style="border-color: rgba(48,209,88,0.3);"><div class="panel-header"><span class="font-semibold positive">💰 盈利 SKU Top 10 <span class="text-secondary font-normal">(共 ${pro.length} 个)</span></span></div><div class="panel-body"><div class="overflow-auto" style="max-height: 280px;"><table class="data-table"><thead><tr><th>SKU</th><th class="text-right">销售</th><th class="text-right">毛利率</th><th class="text-right">经营利润</th></tr></thead><tbody>${pro.slice(0, 10).map(r => `<tr><td class="text-primary">${r.sku.substring(0, 15)}</td><td class="text-right">${$(r.rev)}</td><td class="text-right">${pct(r.pm)}</td><td class="text-right positive">${$(r.op)}</td></tr>`).join('')}</tbody></table></div></div></div>
+        <div class="panel" style="border-color: rgba(255,69,58,0.3);"><div class="panel-header"><span class="font-semibold negative">📉 亏损 SKU Top 10 <span class="text-secondary font-normal">(共 ${los.length} 个)</span></span></div><div class="panel-body"><div class="overflow-auto" style="max-height: 280px;"><table class="data-table"><thead><tr><th>SKU</th><th class="text-right">销售</th><th class="text-right">毛利率</th><th class="text-right">经营利润</th></tr></thead><tbody>${los.slice(0, 10).map(r => `<tr><td class="text-primary">${r.sku.substring(0, 15)}</td><td class="text-right">${$(r.rev)}</td><td class="text-right ${r.pm < 0 ? 'negative' : ''}">${pct(r.pm)}</td><td class="text-right negative">${$(r.op)}</td></tr>`).join('')}</tbody></table></div></div></div>
+    </div>`;
+}
+
+// ==================== 广告管理渲染 (任务1核心) ====================
+function renderAds(skus, s) {
+    if (s.isEmpty) { document.getElementById('tab-ads').innerHTML = '<div class="panel p-8 text-center text-secondary">无匹配SKU</div>'; return; }
+    const plan = generateAdOptimizationPlan(s, skus);
+    
+    document.getElementById('tab-ads').innerHTML = `
+    <div class="grid md:grid-cols-4 gap-4">
+        <div class="kpi-card"><p class="kpi-label">广告花费</p><p class="kpi-value">${$(s.adSpend)}</p></div>
+        <div class="kpi-card"><p class="kpi-label">归因销售</p><p class="kpi-value positive">${$(s.adSales)}</p></div>
+        <div class="kpi-card"><p class="kpi-label">广告占比</p><p class="kpi-value ${s.ar > s.pm ? 'negative' : ''}" style="color: var(--accent-warning);">${pct(s.ar)}</p></div>
+        <div class="kpi-card"><p class="kpi-label">ROAS</p><p class="kpi-value">${s.roas.toFixed(2)}</p></div>
+    </div>
+    
+    <div class="panel"><div class="panel-header"><span class="font-semibold">📊 广告占比分析</span></div><div class="panel-body"><div class="grid md:grid-cols-4 gap-4"><div class="kpi-card"><p class="kpi-label">当前</p><p class="kpi-value text-lg ${plan.currentAdRatio > plan.breakEvenAdRatio ? 'negative' : ''}">${pct(plan.currentAdRatio)}</p></div><div class="kpi-card"><p class="kpi-label">盈亏线</p><p class="kpi-value text-lg" style="color: var(--accent-info);">${pct(plan.breakEvenAdRatio)}</p></div><div class="kpi-card"><p class="kpi-label">目标</p><p class="kpi-value text-lg positive">${pct(plan.targetAdRatio)}</p></div><div class="kpi-card"><p class="kpi-label">广告依赖度</p><p class="kpi-value text-lg ${plan.adDependency > 0.7 ? '' : ''}" style="color: ${plan.adDependency > 0.7 ? 'var(--accent-warning)' : 'inherit'};">${pct(plan.adDependency)}</p></div></div></div></div>
+    
+    <!-- Phase 1: 无意义消耗清单 -->
+    <div class="panel" style="border-color: rgba(255,159,10,0.3);"><div class="panel-header"><span class="font-semibold" style="color: var(--accent-warning);">🔥 Phase 1: 砍无意义消耗 <span class="text-secondary font-normal">(对销量影响 ≈ 0)</span></span></div><div class="panel-body">
+        ${plan.phase1.wasteList.length > 0 ? `
+        <div class="overflow-auto mb-4" style="max-height: 280px;">
+            <table class="data-table"><thead><tr><th>SKU</th><th>浪费金额</th><th>原因</th><th>建议动作</th></tr></thead>
+            <tbody>${plan.phase1.wasteList.slice(0, 20).map(w => `<tr><td class="text-primary">${w.sku.substring(0, 15)}</td><td class="text-right negative">$${w.wasted_spend.toFixed(0)}</td><td class="text-tertiary text-xs">${w.reason}</td><td><span class="badge badge-${w.suggested_action === 'pause' ? 'danger' : w.suggested_action === 'restructure' ? 'warning' : 'info'}">${w.action_desc}</span></td></tr>`).join('')}</tbody>
+            </table>
+        </div>
+        <div class="alert alert-success"><div><p class="positive font-semibold">✅ Phase1 预计节省: ${$(plan.phase1.totalSavings)} <span class="text-secondary font-normal">(占比下降 ${pct(plan.phase1.ratioReduction)})</span></p><p class="text-secondary text-sm mt-1">执行后广告占比: ${pct(plan.currentAdRatio)} → ${pct(plan.phase1.afterRatio)}</p><p class="text-tertiary text-xs mt-2">${plan.phase1.salesImpactAssumption}</p></div></div>
+        ` : '<p class="text-secondary">未发现明显无意义消耗 ✓</p>'}
+    </div></div>
+    
+    <!-- Phase 2: 增量优化周计划 -->
+    ${plan.phase2.gap > 0 ? `
+    <div class="panel" style="border-color: rgba(0,113,227,0.3);"><div class="panel-header"><span class="font-semibold" style="color: var(--accent-primary);">📅 Phase 2: 增量优化周计划 <span class="text-secondary font-normal">(需 ${plan.phase2.weeksNeeded} 周)</span></span></div><div class="panel-body">
+        <div class="overflow-auto mb-4">
+            <table class="data-table"><thead><tr><th>周次</th><th class="text-right">目标占比</th><th class="text-right">降幅</th><th class="text-right">日预算</th><th>执行动作</th><th>检查点</th></tr></thead>
+            <tbody>${plan.phase2.plan.map(p => `<tr><td class="text-primary">Week ${p.week}</td><td class="text-right">${pct(p.target_ad_ratio)}</td><td class="text-right" style="color: var(--accent-warning);">-${pct(p.delta)}</td><td class="text-right">${$(p.daily_budget)}/天</td><td class="text-tertiary text-xs">${p.actions.join(', ')}</td><td class="text-tertiary text-xs">${p.checkpoint || '-'}</td></tr>`).join('')}</tbody>
+            </table>
+        </div>
+    </div></div>` : ''}
+    
+    <!-- 销量影响度估算 -->
+    <div class="panel"><div class="panel-header"><span class="font-semibold">📈 销量影响度估算 <span class="text-secondary font-normal">(基于广告依赖度 ${pct(plan.adDependency)})</span></span></div><div class="panel-body">
+        <div class="grid md:grid-cols-3 gap-4 mb-4">
+            <div class="alert alert-success"><div><p class="kpi-label">保守估计</p><p class="text-primary">每降1%广告占比 → 销量降 ${pct(plan.impact.perPointPct.conservative.rate)}</p><p class="positive text-sm mt-2">总降幅预估: ${plan.impact.totalPct.conservative}%</p><p class="text-tertiary text-xs mt-1">${plan.impact.perPointPct.conservative.desc}</p></div></div>
+            <div class="alert alert-info"><div><p class="kpi-label">中性估计</p><p class="text-primary">每降1%广告占比 → 销量降 ${pct(plan.impact.perPointPct.moderate.rate)}</p><p style="color: var(--accent-info);" class="text-sm mt-2">总降幅预估: ${plan.impact.totalPct.moderate}%</p><p class="text-tertiary text-xs mt-1">${plan.impact.perPointPct.moderate.desc}</p></div></div>
+            <div class="alert alert-warning"><div><p class="kpi-label">激进估计</p><p class="text-primary">每降1%广告占比 → 销量降 ${pct(plan.impact.perPointPct.aggressive.rate)}</p><p style="color: var(--accent-warning);" class="text-sm mt-2">总降幅预估: ${plan.impact.totalPct.aggressive}%</p><p class="text-tertiary text-xs mt-1">${plan.impact.perPointPct.aggressive.desc}</p></div></div>
+        </div>
+        ${plan.hasNonlinearRisk ? `<div class="alert alert-critical"><span>⚠️ ${plan.riskWarning}</span></div>` : `<div class="alert alert-success"><span class="positive">✅ 调整幅度在安全范围内 (< ${plan.riskThreshold}%)</span></div>`}
+    </div></div>`;
+}
+
+// ==================== 库存管理渲染 ====================
+function renderInventory(skus, s) {
+    if (s.isEmpty) { document.getElementById('tab-inventory').innerHTML = '<div class="panel p-8 text-center text-secondary">无匹配SKU</div>'; return; }
+    const invData = skus.map(sku => ({ ...sku, inv: calcInventoryMetrics(sku, INV_CONFIG) })).filter(x => x.du > 0 || x.ful > 0);
+    invData.sort((a, b) => (a.inv.sellableDOS ?? 9999) - (b.inv.sellableDOS ?? 9999));
+    
+    const critical = invData.filter(x => x.inv.status === 'critical'), reorder = invData.filter(x => x.inv.status === 'reorder-now'), watch = invData.filter(x => x.inv.status === 'watch'), healthy = invData.filter(x => x.inv.status === 'healthy'), overstock = invData.filter(x => x.inv.overstockRisk);
+    const hasReservedData = invData.some(x => x.inv.hasReservedData);
+    
+    document.getElementById('tab-inventory').innerHTML = `
+    ${!hasReservedData ? `<div class="alert alert-warning mb-4"><span>⚠️ 未导入预留库存 (reserved_qty)，判断偏乐观</span></div>` : ''}
+    <div class="panel mb-4"><div class="panel-body"><div class="flex justify-between items-center flex-wrap gap-4"><span class="font-semibold">⚙️ 库存配置</span><div class="flex gap-6 text-sm"><div><span class="text-tertiary">头程周期:</span> <span class="text-primary font-semibold">${INV_CONFIG.leadTimeDays}天</span></div><div><span class="text-tertiary">安全库存:</span> <span class="text-primary font-semibold">${INV_CONFIG.safetyDays}天</span></div><div><span class="text-tertiary">目标覆盖:</span> <span class="text-primary font-semibold">${INV_CONFIG.targetCoverDays}天</span></div><div><span class="text-tertiary">低库存阈值:</span> <span class="negative font-semibold">&lt;${INV_CONFIG.lowStockThreshold}天</span></div><div><span class="text-tertiary">积压阈值:</span> <span style="color: var(--accent-info);" class="font-semibold">&gt;${INV_CONFIG.overStockThreshold}天</span></div></div></div></div></div>
+    <div class="grid md:grid-cols-5 gap-4">
+        <div class="kpi-card" style="border-color: rgba(255,69,58,0.3);"><p class="kpi-label">🔴 断货风险</p><p class="kpi-value negative">${critical.length}</p><p class="kpi-sub">&lt;${INV_CONFIG.lowStockThreshold}天</p></div>
+        <div class="kpi-card" style="border-color: rgba(255,159,10,0.3);"><p class="kpi-label">🟠 需补货</p><p class="kpi-value" style="color: var(--accent-warning);">${reorder.length}</p><p class="kpi-sub">&lt;${INV_CONFIG.leadTimeDays}天</p></div>
+        <div class="kpi-card" style="border-color: rgba(255,159,10,0.3);"><p class="kpi-label">🟡 关注</p><p class="kpi-value" style="color: var(--accent-warning);">${watch.length}</p><p class="kpi-sub">7-15天</p></div>
+        <div class="kpi-card" style="border-color: rgba(48,209,88,0.3);"><p class="kpi-label">🟢 健康</p><p class="kpi-value positive">${healthy.length}</p><p class="kpi-sub">≥15天</p></div>
+        <div class="kpi-card" style="border-color: rgba(100,210,255,0.3);"><p class="kpi-label">📦 积压风险</p><p class="kpi-value" style="color: var(--accent-info);">${overstock.length}</p><p class="kpi-sub">&gt;${INV_CONFIG.overStockThreshold}天</p></div>
+    </div>
+    <div class="panel"><div class="panel-header"><span class="font-semibold">库存明细 <span class="text-secondary font-normal">(基于 Sellable DOS 判断)</span></span></div><div class="panel-body"><div class="overflow-auto" style="max-height: 400px;"><table class="data-table"><thead><tr><th>SKU</th><th>状态</th><th class="text-right">可售</th><th class="text-right">在途</th><th class="text-right">日均</th><th class="text-right">Sellable DOS</th><th class="text-right">Total DOS</th><th class="text-right">Gap</th><th class="text-right">建议补货</th></tr></thead><tbody>${invData.map(r => `<tr class="${r.inv.status === 'critical' ? '' : ''}"><td class="text-primary">${r.sku.substring(0, 18)}</td><td>${getInvStatusBadge(r.inv)}</td><td class="text-right ${r.ful < r.du * INV_CONFIG.lowStockThreshold ? 'negative' : ''}">${r.ful}</td><td class="text-right">${r.inb}</td><td class="text-right">${r.du.toFixed(1)}</td><td class="text-right ${r.inv.statusColor === 'danger' ? 'negative' : r.inv.statusColor === 'warning' ? '' : ''}" style="${r.inv.statusColor === 'warning' ? 'color: var(--accent-warning);' : ''}">${formatDOS(r.inv.sellableDOS)}</td><td class="text-right ${r.inv.overstockRisk ? '' : ''}" style="${r.inv.overstockRisk ? 'color: var(--accent-info);' : ''}">${formatDOS(r.inv.totalDOS)}</td><td class="text-right ${r.inv.stockoutGap > 0 ? 'negative' : 'text-tertiary'}">${r.inv.stockoutGap > 0 ? r.inv.stockoutGap.toFixed(0) + '天' : '—'}</td><td class="text-right" style="color: var(--accent-primary);">${r.inv.orderQty > 0 ? r.inv.orderQty : '—'}</td></tr>`).join('')}</tbody></table></div></div></div>
+    <div class="panel" style="background: var(--bg-hover);"><div class="panel-body"><p class="font-semibold mb-3">📋 补货算法说明</p><div class="text-sm text-secondary space-y-1"><p><strong>Sellable DOS</strong> = 可售库存 / 日均销量 (状态判断依据)</p><p><strong>Total DOS</strong> = (可售+在途-预留) / 日均销量 (积压判断依据)</p><p><strong>Stockout Gap</strong> = max(0, ${INV_CONFIG.leadTimeDays}天头程 − Sellable DOS)</p><p><strong>ROP</strong> = (${INV_CONFIG.leadTimeDays}+${INV_CONFIG.safetyDays}) × 日均 = ${INV_CONFIG.leadTimeDays + INV_CONFIG.safetyDays}天用量</p><p><strong>建议补货</strong> = max(0, ${INV_CONFIG.targetCoverDays}天目标 − 可用库存)</p></div></div></div>`;
+}
+
+// ==================== 配置渲染 ====================
+function renderConfig(skus, s) {
+    document.getElementById('tab-config').innerHTML = `
+    <div class="max-w-2xl mx-auto space-y-6">
+        <div class="panel"><div class="panel-header"><span class="font-semibold">库存配置</span></div><div class="panel-body space-y-3 text-sm">${[['Lead Time (头程)', INV_CONFIG.leadTimeDays + '天 (' + (INV_CONFIG.leadTimeDays <= 15 ? '快船' : INV_CONFIG.leadTimeDays <= 35 ? '慢船' : '极慢船') + ')'], ['Safety Days (安全)', INV_CONFIG.safetyDays + '天'], ['Target Cover (目标)', INV_CONFIG.targetCoverDays + '天'], ['低库存阈值', '<' + INV_CONFIG.lowStockThreshold + '天'], ['积压阈值', '>' + INV_CONFIG.overStockThreshold + '天']].map(([l, v]) => `<div class="flex justify-between py-2" style="border-bottom: 1px solid var(--border-subtle);"><span class="text-tertiary">${l}</span><span class="text-primary">${v}</span></div>`).join('')}</div></div>
+        <div class="panel"><div class="panel-header"><span class="font-semibold">计算口径</span></div><div class="panel-body space-y-2 text-sm">${[['数据周期', D.s.days + '天'], ['Run ID', runId], ['算法版本', ALGO_VERSION], ['定价毛利', '净销售-佣金-FBA-成本-头程-退款费'], ['广告贡献利润', '归因销售×毛利率-广告花费']].map(([l, v]) => `<div class="flex justify-between py-2" style="border-bottom: 1px solid var(--border-subtle);"><span class="text-tertiary">${l}</span><span class="text-primary">${v}</span></div>`).join('')}</div></div>
+    </div>`;
+}
+
+// ==================== 图表渲染 ====================
+function renderCharts(s, skus) {
+    Object.values(charts).forEach(c => c && c.destroy && c.destroy());
+    if (s.isEmpty) return;
+    const textColor = getComputedStyle(document.body).getPropertyValue('--text-secondary');
+    const gridColor = getComputedStyle(document.body).getPropertyValue('--border-subtle');
+    const t10 = skus.slice(0, 10);
+    const ctx1 = document.getElementById('chart1');
+    if (ctx1) charts.c1 = new Chart(ctx1, { type: 'bar', data: { labels: t10.map(x => x.sku.substring(0, 12)), datasets: [{ data: t10.map(x => x.op), backgroundColor: t10.map(x => x.op >= 0 ? '#30d158' : '#ff453a') }] }, options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { grid: { color: gridColor }, ticks: { color: textColor } }, y: { grid: { display: false }, ticks: { color: textColor } } } } });
+    const ctx2 = document.getElementById('chart2');
+    if (ctx2) charts.c2 = new Chart(ctx2, { type: 'doughnut', data: { labels: ['佣金', 'FBA', '成本', '头程', '毛利'], datasets: [{ data: [s.ref, s.fba, s.cogs, s.frt, s.pp], backgroundColor: ['#ff453a', '#ff9f0a', '#ffd60a', '#bf5af2', '#30d158'] }] }, options: { plugins: { legend: { position: 'right', labels: { color: textColor } } } } });
+    const ctx3 = document.getElementById('chart3');
+    if (ctx3) { const wf = [{ n: '净销售', v: s.rev, c: '#30d158' }, { n: '佣金', v: -s.ref, c: '#ff453a' }, { n: 'FBA', v: -s.fba, c: '#ff9f0a' }, { n: '成本', v: -s.cogs, c: '#ffd60a' }, { n: '头程', v: -s.frt, c: '#bf5af2' }, { n: '定价毛利', v: s.pp, c: '#34c759' }, { n: '广告', v: -s.adSpend, c: '#af52de' }, { n: '经营毛利', v: s.op, c: s.op >= 0 ? '#0071e3' : '#ff453a' }]; charts.c3 = new Chart(ctx3, { type: 'bar', data: { labels: wf.map(d => d.n), datasets: [{ data: wf.map(d => d.v), backgroundColor: wf.map(d => d.c) }] }, options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: textColor } }, y: { grid: { color: gridColor }, ticks: { color: textColor } } } } }); }
+}
+
+// ==================== 任务2: PDF导出（完整版） ====================
+function exportPDF() { document.getElementById('pdf-tip-modal').classList.remove('hidden'); }
+
+function closePdfTipAndPrint() {
+    document.getElementById('pdf-tip-modal').classList.add('hidden');
+    const { skus, summary: s } = applyFilters();
+    const plan = generateAdOptimizationPlan(s, skus);
+    const quadrants = { star: skus.filter(x => classifySkuQuadrant(x) === 'star'), question: skus.filter(x => classifySkuQuadrant(x) === 'question'), dog: skus.filter(x => classifySkuQuadrant(x) === 'dog'), eliminate: skus.filter(x => classifySkuQuadrant(x) === 'eliminate') };
+    const invData = skus.map(sku => ({ ...sku, inv: calcInventoryMetrics(sku, INV_CONFIG) }));
+    const critical = invData.filter(x => x.inv.status === 'critical');
+    const timestamp = new Date().toLocaleString('zh-CN');
+    
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>LGURT Dashboard Report</title><style>
+        @page { size: A4; margin: 20mm; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 11px; color: #1d1d1f; line-height: 1.5; }
+        h1 { font-size: 24px; margin-bottom: 8px; }
+        h2 { font-size: 16px; margin-top: 24px; margin-bottom: 12px; border-bottom: 2px solid #0071e3; padding-bottom: 4px; }
+        h3 { font-size: 13px; margin-top: 16px; margin-bottom: 8px; }
+        .meta { color: #6e6e73; font-size: 10px; margin-bottom: 20px; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+        .kpi { background: #f5f5f7; padding: 12px; border-radius: 8px; }
+        .kpi-label { font-size: 10px; color: #6e6e73; text-transform: uppercase; }
+        .kpi-value { font-size: 18px; font-weight: 600; }
+        .positive { color: #34c759; }
+        .negative { color: #ff3b30; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 10px; }
+        th { background: #f5f5f7; padding: 8px; text-align: left; font-weight: 600; }
+        td { padding: 8px; border-bottom: 1px solid #e5e5e5; }
+        .alert { padding: 10px; border-radius: 6px; margin-bottom: 12px; }
+        .alert-danger { background: #fff0f0; border-left: 3px solid #ff3b30; }
+        .alert-warning { background: #fff8f0; border-left: 3px solid #ff9500; }
+        .alert-success { background: #f0fff0; border-left: 3px solid #34c759; }
+        .page-break { page-break-before: always; }
+        .footer { position: fixed; bottom: 10mm; left: 0; right: 0; text-align: center; font-size: 9px; color: #6e6e73; }
+    </style></head><body>
+        <!-- 封面 -->
+        <div style="text-align: center; padding-top: 100px;">
+            <h1>📊 LGURT Dashboard Report</h1>
+            <p class="meta">生成时间: ${timestamp}</p>
+            <div style="margin: 40px auto; max-width: 300px; text-align: left;">
+                <p><strong>数据周期:</strong> ${D.s.days} 天</p>
+                <p><strong>筛选范围:</strong> ${s.isFiltered ? s.skuCount + '/' + s.totalSkuCount + ' SKU' : '全量 ' + s.skuCount + ' SKU'}</p>
+                <p><strong>算法版本:</strong> ${ALGO_VERSION}</p>
+                <p><strong>Run ID:</strong> ${runId}</p>
+                <p><strong>头程模式:</strong> ${INV_CONFIG.leadTimeDays}天 (${INV_CONFIG.leadTimeDays <= 15 ? '快船' : INV_CONFIG.leadTimeDays <= 35 ? '慢船' : '极慢船'})</p>
+            </div>
+        </div>
+        
+        <!-- Executive Summary -->
+        <div class="page-break">
+            <h2>Executive Summary</h2>
+            <div class="kpi-grid">
+                <div class="kpi"><div class="kpi-label">净销售</div><div class="kpi-value">${$(s.rev)}</div></div>
+                <div class="kpi"><div class="kpi-label">定价毛利</div><div class="kpi-value">${$(s.pp)} (${pct(s.pm)})</div></div>
+                <div class="kpi"><div class="kpi-label">广告花费</div><div class="kpi-value">${$(s.adSpend)} (${pct(s.ar)})</div></div>
+                <div class="kpi"><div class="kpi-label">净利润</div><div class="kpi-value ${s.np >= 0 ? 'positive' : 'negative'}">${$(s.np)}</div></div>
+            </div>
+            <div class="alert ${s.np >= 0 ? 'alert-success' : 'alert-danger'}">
+                <strong>一句话结论:</strong> ${s.np >= 0 ? '✅ 盈利状态，' : '⚠️ 亏损状态，'}广告占比${s.ar > s.pm ? '超出' : '低于'}毛利率${s.ar > s.pm ? '，需执行Phase1优化' : '，可适当放量'}。
+            </div>
+            
+            <h3>SKU四象限分布</h3>
+            <table>
+                <tr><th>象限</th><th>数量</th><th>说明</th></tr>
+                <tr><td>🟢 明星</td><td>${quadrants.star.length}</td><td>毛利正+广告贡献正，可放量</td></tr>
+                <tr><td>🟡 问题</td><td>${quadrants.question.length}</td><td>毛利负但广告贡献正，需诊断成本</td></tr>
+                <tr><td>🟠 瘦狗</td><td>${quadrants.dog.length}</td><td>毛利正但广告贡献负，需优化广告</td></tr>
+                <tr><td>🔴 淘汰</td><td>${quadrants.eliminate.length}</td><td>双负，考虑退出</td></tr>
+            </table>
+        </div>
+        
+        <!-- Overview -->
+        <div class="page-break">
+            <h2>Overview - SKU健康度</h2>
+            <div class="kpi-grid">
+                <div class="kpi"><div class="kpi-label">盈利SKU</div><div class="kpi-value positive">${skus.filter(x => x.op > 0).length}</div></div>
+                <div class="kpi"><div class="kpi-label">亏损SKU</div><div class="kpi-value negative">${skus.filter(x => x.op < 0).length}</div></div>
+                <div class="kpi"><div class="kpi-label">低库存风险</div><div class="kpi-value negative">${critical.length}</div></div>
+                <div class="kpi"><div class="kpi-label">无销量</div><div class="kpi-value">${skus.filter(x => x.du <= 0).length}</div></div>
+            </div>
+            <h3>Top 10 经营利润 SKU</h3>
+            <table>
+                <tr><th>SKU</th><th>销售额</th><th>毛利率</th><th>广告占比</th><th>经营利润</th></tr>
+                ${skus.slice(0, 10).map(r => `<tr><td>${r.sku}</td><td>${$(r.rev)}</td><td>${pct(r.pm)}</td><td>${pct(r.ar)}</td><td class="${r.op >= 0 ? 'positive' : 'negative'}">${$(r.op)}</td></tr>`).join('')}
+            </table>
+        </div>
+        
+        <!-- Profit -->
+        <div class="page-break">
+            <h2>Profit Analysis - 利润分析</h2>
+            <h3>盈利 SKU Top 10</h3>
+            <table>
+                <tr><th>SKU</th><th>销售额</th><th>毛利率</th><th>经营利润</th></tr>
+                ${skus.filter(x => x.op > 0).sort((a, b) => b.op - a.op).slice(0, 10).map(r => `<tr><td>${r.sku}</td><td>${$(r.rev)}</td><td>${pct(r.pm)}</td><td class="positive">${$(r.op)}</td></tr>`).join('')}
+            </table>
+            <h3>亏损 SKU Top 10</h3>
+            <table>
+                <tr><th>SKU</th><th>销售额</th><th>毛利率</th><th>经营利润</th></tr>
+                ${skus.filter(x => x.op < 0).sort((a, b) => a.op - b.op).slice(0, 10).map(r => `<tr><td>${r.sku}</td><td>${$(r.rev)}</td><td class="${r.pm < 0 ? 'negative' : ''}">${pct(r.pm)}</td><td class="negative">${$(r.op)}</td></tr>`).join('')}
+            </table>
+        </div>
+        
+        <!-- Decision - 诊断建议 -->
+        <div class="page-break">
+            <h2>Decision Center - 诊断建议</h2>
+            <h3>需关注的SKU (问题数>0或触发止损)</h3>
+            <table>
+                <tr><th>SKU</th><th>象限</th><th>角色</th><th>毛利率</th><th>广告贡献</th><th>问题数</th><th>首要建议</th></tr>
+                ${skus.map(sku => generateSkuDiagnosis(sku)).filter(d => !d.isHealthy || d.issues.length > 0).slice(0, 20).map(d => {
+                    const sku = skus.find(x => x.sku === d.sku);
+                    return `<tr><td>${d.sku.substring(0, 15)}</td><td>${d.qInfo.icon} ${d.qInfo.name}</td><td>${d.roleConfig.name}</td><td class="${sku.pm < 0 ? 'negative' : ''}">${pct(sku.pm)}</td><td class="${d.adContrib >= 0 ? 'positive' : 'negative'}">$${d.adContrib.toFixed(0)}</td><td>${d.issues.length}</td><td>${d.actions[0]?.text.substring(0, 30) || '-'}...</td></tr>`;
+                }).join('')}
+            </table>
+            ${skus.map(sku => generateSkuDiagnosis(sku)).filter(d => d.stopLoss.length > 0).length > 0 ? `
+            <h3>止损警告</h3>
+            <div class="alert alert-danger">
+                ${skus.map(sku => generateSkuDiagnosis(sku)).filter(d => d.stopLoss.length > 0).slice(0, 5).map(d => `<p><strong>${d.sku}:</strong> ${d.stopLoss[0]}</p>`).join('')}
+            </div>
+            ` : ''}
+        </div>
+        
+        <!-- Ads -->
+        <div class="page-break">
+            <h2>Ads Management - 广告管理</h2>
+            <div class="kpi-grid">
+                <div class="kpi"><div class="kpi-label">当前广告占比</div><div class="kpi-value">${pct(plan.currentAdRatio)}</div></div>
+                <div class="kpi"><div class="kpi-label">盈亏线</div><div class="kpi-value">${pct(plan.breakEvenAdRatio)}</div></div>
+                <div class="kpi"><div class="kpi-label">目标</div><div class="kpi-value positive">${pct(plan.targetAdRatio)}</div></div>
+                <div class="kpi"><div class="kpi-label">广告依赖度</div><div class="kpi-value">${pct(plan.adDependency)}</div></div>
+            </div>
+            
+            <h3>Phase 1: 无意义消耗清单</h3>
+            ${plan.phase1.wasteList.length > 0 ? `
+            <table>
+                <tr><th>SKU</th><th>浪费金额</th><th>原因</th><th>建议动作</th></tr>
+                ${plan.phase1.wasteList.slice(0, 15).map(w => `<tr><td>${w.sku}</td><td class="negative">$${w.wasted_spend.toFixed(0)}</td><td>${w.reason}</td><td>${w.action_desc}</td></tr>`).join('')}
+            </table>
+            <div class="alert alert-success">Phase1预计节省: ${$(plan.phase1.totalSavings)}，广告占比下降 ${pct(plan.phase1.ratioReduction)}</div>
+            ` : '<p>未发现明显无意义消耗</p>'}
+            
+            ${plan.phase2.plan.length > 0 ? `
+            <h3>Phase 2: 增量优化周计划</h3>
+            <table>
+                <tr><th>周次</th><th>目标占比</th><th>降幅</th><th>日预算</th><th>执行动作</th></tr>
+                ${plan.phase2.plan.map(p => `<tr><td>Week ${p.week}</td><td>${pct(p.target_ad_ratio)}</td><td>-${pct(p.delta)}</td><td>${$(p.daily_budget)}</td><td>${p.actions.join(', ')}</td></tr>`).join('')}
+            </table>` : ''}
+            
+            <h3>销量影响度估算</h3>
+            <table>
+                <tr><th>估计类型</th><th>每降1%影响</th><th>总降幅影响</th><th>场景说明</th></tr>
+                <tr><td>保守</td><td>${pct(plan.impact.perPointPct.conservative.rate)}</td><td>${plan.impact.totalPct.conservative}%</td><td>${plan.impact.perPointPct.conservative.desc}</td></tr>
+                <tr><td>中性</td><td>${pct(plan.impact.perPointPct.moderate.rate)}</td><td>${plan.impact.totalPct.moderate}%</td><td>${plan.impact.perPointPct.moderate.desc}</td></tr>
+                <tr><td>激进</td><td>${pct(plan.impact.perPointPct.aggressive.rate)}</td><td>${plan.impact.totalPct.aggressive}%</td><td>${plan.impact.perPointPct.aggressive.desc}</td></tr>
+            </table>
+            ${plan.hasNonlinearRisk ? `<div class="alert alert-warning">⚠️ ${plan.riskWarning}</div>` : ''}
+        </div>
+        
+        <!-- Inventory -->
+        <div class="page-break">
+            <h2>Inventory Management - 库存管理</h2>
+            <div class="kpi-grid">
+                <div class="kpi"><div class="kpi-label">🔴 断货风险</div><div class="kpi-value negative">${invData.filter(x => x.inv.status === 'critical').length}</div></div>
+                <div class="kpi"><div class="kpi-label">🟠 需补货</div><div class="kpi-value">${invData.filter(x => x.inv.status === 'reorder-now').length}</div></div>
+                <div class="kpi"><div class="kpi-label">🟢 健康</div><div class="kpi-value positive">${invData.filter(x => x.inv.status === 'healthy').length}</div></div>
+                <div class="kpi"><div class="kpi-label">📦 积压风险</div><div class="kpi-value">${invData.filter(x => x.inv.overstockRisk).length}</div></div>
+            </div>
+            
+            ${critical.length > 0 ? `
+            <h3>低库存风险 SKU (Sellable DOS < ${INV_CONFIG.lowStockThreshold}天)</h3>
+            <table>
+                <tr><th>SKU</th><th>可售</th><th>在途</th><th>日均</th><th>Sellable DOS</th><th>建议补货</th></tr>
+                ${critical.slice(0, 20).map(r => `<tr><td>${r.sku}</td><td>${r.ful}</td><td>${r.inb}</td><td>${r.du.toFixed(1)}</td><td class="negative">${r.inv.sellableDOS?.toFixed(1) || 0}天</td><td>${r.inv.orderQty}</td></tr>`).join('')}
+            </table>` : '<div class="alert alert-success">✅ 无低库存风险SKU</div>'}
+        </div>
+        
+        <!-- Config -->
+        <div class="page-break">
+            <h2>Config & Definitions - 配置与定义</h2>
+            <h3>库存配置</h3>
+            <table>
+                <tr><th>参数</th><th>值</th><th>说明</th></tr>
+                <tr><td>lead_time_days</td><td>${INV_CONFIG.leadTimeDays}</td><td>头程周期 (${INV_CONFIG.leadTimeDays <= 15 ? '快船' : INV_CONFIG.leadTimeDays <= 35 ? '慢船' : '极慢船'})</td></tr>
+                <tr><td>safety_days</td><td>${INV_CONFIG.safetyDays}</td><td>安全库存天数</td></tr>
+                <tr><td>target_cover_days</td><td>${INV_CONFIG.targetCoverDays}</td><td>目标覆盖天数</td></tr>
+                <tr><td>low_stock_threshold</td><td>${INV_CONFIG.lowStockThreshold}</td><td>低库存阈值(天)</td></tr>
+                <tr><td>overstock_threshold</td><td>${INV_CONFIG.overStockThreshold}</td><td>积压阈值(天)</td></tr>
+            </table>
+            <h3>字段定义</h3>
+            <table>
+                <tr><th>字段</th><th>公式</th></tr>
+                <tr><td>定价毛利</td><td>净销售 - 佣金 - FBA - 成本 - 头程 - 退款费</td></tr>
+                <tr><td>经营毛利</td><td>定价毛利 - 广告花费</td></tr>
+                <tr><td>净利润</td><td>经营毛利 - 固定成本</td></tr>
+                <tr><td>广告贡献利润</td><td>归因销售 × 毛利率 - 广告花费</td></tr>
+                <tr><td>Sellable DOS</td><td>可售库存 / 日均销量</td></tr>
+                <tr><td>Total DOS</td><td>(可售 + 在途 - 预留) / 日均销量</td></tr>
+            </table>
+        </div>
+        
+        <div class="footer">Run ID: ${runId} | Generated: ${timestamp} | Algorithm: ${ALGO_VERSION}</div>
+    </body></html>`;
+    
+    const frame = document.getElementById('print-frame');
+    frame.contentDocument.open();
+    frame.contentDocument.write(html);
+    frame.contentDocument.close();
+    setTimeout(() => frame.contentWindow.print(), 500);
+}
+
+// ==================== 任务3: Excel导出（Single Source of Truth） ====================
+function exportXLSX() {
+    const { skus, summary: s } = applyFilters();
+    const plan = generateAdOptimizationPlan(s, skus);
+    const timestamp = new Date().toLocaleString('zh-CN');
+    const wb = XLSX.utils.book_new();
+    const bundle = buildResultBundle(s, skus, plan);
+    
+    // 一致性校验
+    if (!bundle.checksums.isConsistent) {
+        console.warn('一致性校验警告: SKU汇总与Summary不一致', bundle.checksums);
+    }
+    
+    // Sheet 1: Summary_Store
+    const summaryData = [['LGURT Dashboard v5.2 - 店铺汇总'], [''], ['元数据'], ['生成时间', timestamp], ['Run ID', runId], ['算法版本', ALGO_VERSION], ['数据周期', s.days + '天'], ['SKU数量', skus.length], ['头程模式', INV_CONFIG.leadTimeDays + '天'], [''], ['关键指标', '值', '占比'], ['净销售额', s.rev, '100%'], ['定价毛利', s.pp, pctVal(s.pm)], ['广告花费', s.adSpend, pctVal(s.ar)], ['经营毛利', s.op, pctVal(s.om)], ['固定成本', s.mfPeriod, ''], ['净利润', s.np, pctVal(s.npm)], [''], ['广告分析'], ['广告依赖度', pctVal(plan.adDependency)], ['盈亏线广告占比', pctVal(plan.breakEvenAdRatio)], ['目标广告占比', pctVal(plan.targetAdRatio)], ['Phase1节流预估', plan.phase1.totalSavings], ['Phase2需降幅度', pctVal(plan.phase2.gap)]];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), 'Summary_Store');
+    
+    // Sheet 2: SKU_Full (含诊断)
+    const skuFullData = [['SKU', 'ASIN', '品类', '销售额', '销量', '日均', '佣金', 'FBA', '成本', '头程', '退款费', '定价毛利', '毛利率', '广告花费', '归因销售', '广告占比', 'ACOS', 'ROAS', '广告贡献', '经营利润', '经营毛利率', '四象限', 'SKU角色', 'Sellable DOS', 'Total DOS', '库存状态', '建议补货', '问题数', '首要建议', '广告动作']];
+    skus.forEach(r => { 
+        const q = classifySkuQuadrant(r); 
+        const qInfo = getQuadrantInfo(q); 
+        const role = getSkuRole(r.sku); 
+        const d = generateSkuDiagnosis(r); 
+        const inv = calcInventoryMetrics(r); 
+        const adSug = generateSkuAdSuggestion(r);
+        skuFullData.push([r.sku, r.asin, r.cat, r.rev, r.units, r.du, r.ref, r.fba, r.cogs, r.frt, r.rfmFee, r.pp, r.pm, r.adSpend, r.adSales, r.ar, r.acos, r.roas, d.adContrib, r.op, r.om, qInfo.name, SKU_ROLE_CONFIG[role].name, inv.sellableDOS, inv.totalDOS, inv.status, inv.orderQty, d.issues.length, d.actions[0]?.text || '-', adSug.primary_action?.action_desc || '-']); 
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(skuFullData), 'SKU_Full');
+    
+    // Sheet 3: Ads_Detail (含Phase1/Phase2 + SKU级广告建议)
+    const adsData = [['=== Phase 1 无意义消耗清单 ==='], ['SKU', 'ASIN', '浪费金额', '原因', '建议动作', '动作描述']];
+    plan.phase1.wasteList.forEach(w => adsData.push([w.sku, w.asin, w.wasted_spend, w.reason, w.suggested_action, w.action_desc]));
+    adsData.push([''], ['Phase1汇总'], ['总节省', plan.phase1.totalSavings], ['占比下降', pctVal(plan.phase1.ratioReduction)], ['执行后广告占比', pctVal(plan.phase1.afterRatio)], ['销量影响假设', plan.phase1.salesImpactAssumption]);
+    adsData.push([''], ['=== Phase 2 周计划 ==='], ['周次', '目标占比', '降幅', '日预算', '动作1', '动作2', '检查点']);
+    plan.phase2.plan.forEach(p => adsData.push(['Week ' + p.week, p.target_ad_ratio, p.delta, p.daily_budget, p.actions[0] || '', p.actions[1] || '', p.checkpoint || '']));
+    adsData.push([''], ['=== 销量影响度 ==='], ['类型', '每降1%影响', '总影响', '说明'], ['保守', plan.impact.perPointPct.conservative.rate, plan.impact.totalPct.conservative + '%', plan.impact.perPointPct.conservative.desc], ['中性', plan.impact.perPointPct.moderate.rate, plan.impact.totalPct.moderate + '%', plan.impact.perPointPct.moderate.desc], ['激进', plan.impact.perPointPct.aggressive.rate, plan.impact.totalPct.aggressive + '%', plan.impact.perPointPct.aggressive.desc]);
+    if (plan.riskWarning) adsData.push([''], ['风险警告', plan.riskWarning]);
+    
+    // SKU级广告建议
+    adsData.push([''], ['=== SKU级广告建议 ==='], ['SKU', 'ASIN', '当前花费', 'ACOS', '广告占比', '动作类型', '动作描述', '预计节省', '销量影响', '子动作1', '子动作2', '子动作3']);
+    const adSuggestions = bundle.ads.skuSuggestions;
+    adSuggestions.filter(x => x.primary_action).forEach(x => {
+        const pa = x.primary_action;
+        adsData.push([x.sku, x.asin, x.current_spend, x.current_acos, x.current_ar, pa.action_type, pa.action_desc, pa.expected_save, pa.sales_impact, pa.sub_actions?.[0] || '', pa.sub_actions?.[1] || '', pa.sub_actions?.[2] || '']);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(adsData), 'Ads_Detail');
+    
+    // Sheet 4: Inventory_Detail
+    const invData = [['SKU', 'ASIN', '可售', '在途', '预留', '可用', '日均', 'Sellable DOS', 'Total DOS', 'Stockout Gap', '状态', '积压风险', 'ROP', '目标库存', '建议补货', '备注']];
+    skus.forEach(r => { const m = calcInventoryMetrics(r, INV_CONFIG); const statusText = { 'critical': '断货风险', 'reorder-now': '需补货', 'watch': '关注', 'healthy': '健康', 'no-sales': '无销量' }[m.status]; invData.push([r.sku, r.asin, r.ful, r.inb, r.rsv || 0, m.availableUnits, r.du, m.sellableDOS, m.totalDOS, m.stockoutGap, statusText, m.overstockRisk ? '是' : '否', m.ropUnits, m.targetUnits, m.orderQty, m.hasReservedData ? '' : '缺少预留']); });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(invData), 'Inventory_Detail');
+    
+    // Sheet 5: Config_And_Definitions
+    const configData = [['LGURT Dashboard 配置与定义'], [''], ['=== 元数据 ==='], ['生成时间', timestamp], ['Run ID', runId], ['算法版本', ALGO_VERSION], ['数据周期', s.days + '天'], ['SKU总数', skus.length], [''], ['=== 库存配置 ==='], ['参数', '值', '说明'], ['lead_time_days', INV_CONFIG.leadTimeDays, '头程周期(' + (INV_CONFIG.leadTimeDays <= 15 ? '快船' : INV_CONFIG.leadTimeDays <= 35 ? '慢船' : '极慢船') + ')'], ['safety_days', INV_CONFIG.safetyDays, '安全库存'], ['target_cover_days', INV_CONFIG.targetCoverDays, '目标覆盖'], ['low_stock_threshold', INV_CONFIG.lowStockThreshold, '低库存阈值'], ['overstock_threshold', INV_CONFIG.overStockThreshold, '积压阈值'], [''], ['=== 字段定义 ==='], ['字段', '公式/说明'], ['定价毛利', '净销售 - 佣金 - FBA - 商品成本 - 头程 - 退款管理费'], ['经营毛利', '定价毛利 - 广告花费'], ['净利润', '经营毛利 - 固定成本(按周期分摊)'], ['广告贡献利润', '归因销售 × 毛利率 - 广告花费'], ['Sellable DOS', '可售库存 / 日均销量 (状态判断依据)'], ['Total DOS', '(可售+在途-预留) / 日均销量 (积压判断依据)'], ['Stockout Gap', 'max(0, 头程天数 - Sellable DOS)'], ['ROP', '(头程+安全) × 日均销量'], ['建议补货', 'max(0, 目标库存 - 可用库存)'], [''], ['=== 一致性校验 ==='], ['SKU汇总销售', bundle.checksums.totalRev], ['Summary销售', bundle.checksums.summaryRev], ['差异', Math.abs(bundle.checksums.totalRev - bundle.checksums.summaryRev)], ['校验结果', bundle.checksums.isConsistent ? '✓ 通过' : '⚠ 不一致']];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(configData), 'Config_And_Definitions');
+    
+    XLSX.writeFile(wb, `LGURT_v5.2_${runId}_${s.days}天.xlsx`);
+}
+
+function exportCSV() { const { skus } = applyFilters(); const headers = ['SKU', '销售额', '毛利率', '广告占比', '经营利润', 'Sellable DOS', '库存状态']; const rows = skus.map(r => { const m = calcInventoryMetrics(r); return [r.sku, r.rev, r.pm, r.ar, r.op, m.sellableDOS, m.status].join(','); }); const blob = new Blob(['\ufeff' + [headers.join(','), ...rows].join('\n')], { type: 'text/csv;charset=utf-8' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `LGURT_${runId}.csv`; a.click(); }
+
+function pctVal(v) { return (v * 100).toFixed(1) + '%'; }
+
+// ==================== 数据处理 ====================
+function processWorkbook(wb) {
+    const days = parseInt(document.getElementById('days-input').value) || 31;
+    const sales = parseSheet(wb, 'sales_data', 19), master = parseSheet(wb, 'sku_master', 18), ads = parseSheet(wb, 'ad_data', 18), inv = parseSheet(wb, 'inventory_data', 15), fc = parseSheet(wb, 'fixed_costs', 12);
+    const skuInfo = {}; master.forEach(r => { if (r[0]) skuInfo[r[0]] = { name: r[2] || r[0], cat: r[3] || '未分类', cost: num(r[4]), freight: num(r[5]) }; });
+    const adBySku = {}, adByAsin = {}; ads.forEach(r => { const asin = String(r[1] || ''), sku = String(r[2] || '').trim(); const ad = { spend: num(r[10]), imp: num(r[7]), clk: num(r[8]), sales: num(r[4]) }; if (sku) { if (!adBySku[sku]) adBySku[sku] = { spend: 0, imp: 0, clk: 0, sales: 0 }; adBySku[sku].spend += ad.spend; adBySku[sku].imp += ad.imp; adBySku[sku].clk += ad.clk; adBySku[sku].sales += ad.sales; } else if (asin) { const k = asin.split('-')[0]; if (!adByAsin[k]) adByAsin[k] = { spend: 0, imp: 0, clk: 0, sales: 0 }; adByAsin[k].spend += ad.spend; adByAsin[k].imp += ad.imp; adByAsin[k].clk += ad.clk; adByAsin[k].sales += ad.sales; } });
+    const invBySku = {}; inv.forEach(r => { if (r[1]) invBySku[r[1]] = { ful: num(r[5]), inb: num(r[6]), rsv: num(r[7]) }; });
+    let mfM = 0, fcd = { labor: 0, rent: 0, sw: 0 }; if (fc.length) { const l = fc[fc.length - 1]; fcd = { labor: num(l[1]), rent: num(l[2]), sw: num(l[3]) }; mfM = fcd.labor + fcd.rent + fcd.sw + num(l[4]) + num(l[5]); }
+    const mfD = mfM / 30, mfP = mfD * days;
+    const skus = []; sales.forEach(r => { const sku = r[2], asin = r[1]; if (!sku || num(r[6]) <= 0) return; const info = skuInfo[sku] || { name: sku, cat: '未分类', cost: 0, freight: 0 }; const units = num(r[5]), rev = num(r[6]), rfm = Math.abs(num(r[8])), ref = num(r[9]), fba = num(r[10]); const cogs = (info.cost || 0) * units, frt = (info.freight || 0) * units; const pp = rev - ref - fba - cogs - frt - rfm, pm = rev > 0 ? pp / rev : 0; let ad = adBySku[sku]; if (!ad) { const k = String(asin).split('-')[0]; ad = adByAsin[k] || { spend: 0, imp: 0, clk: 0, sales: 0 }; } const op = pp - ad.spend, om = rev > 0 ? op / rev : 0, ar = rev > 0 ? ad.spend / rev : 0; const iv = invBySku[sku] || { ful: 0, inb: 0, rsv: 0 }; const du = units / days; skus.push({ sku, asin, name: info.name || sku, cat: info.cat, units, du: rd(du, 1), rev: rd(rev, 2), ref: rd(ref, 2), fba: rd(fba, 2), cogs: rd(cogs, 2), frt: rd(frt, 2), rfmFee: rd(rfm, 2), pp: rd(pp, 2), pm: rd(pm, 4), adSpend: rd(ad.spend, 2), adImp: ad.imp, adClk: ad.clk, adSales: rd(ad.sales, 2), op: rd(op, 2), om: rd(om, 4), ar: rd(ar, 4), acos: ad.sales > 0 ? rd(ad.spend / ad.sales, 4) : 0, roas: ad.spend > 0 ? rd(ad.sales / ad.spend, 2) : 0, ful: iv.ful, inb: iv.inb, rsv: iv.rsv }); });
+    skus.sort((a, b) => b.op - a.op);
+    const t = skus.reduce((a, s) => ({ rev: a.rev + s.rev, units: a.units + s.units, ref: a.ref + s.ref, fba: a.fba + s.fba, cogs: a.cogs + s.cogs, frt: a.frt + s.frt, rfmFee: a.rfmFee + s.rfmFee, pp: a.pp + s.pp, adSpend: a.adSpend + s.adSpend, op: a.op + s.op, imp: a.imp + s.adImp, clk: a.clk + s.adClk, adSales: a.adSales + s.adSales }), { rev: 0, units: 0, ref: 0, fba: 0, cogs: 0, frt: 0, rfmFee: 0, pp: 0, adSpend: 0, op: 0, imp: 0, clk: 0, adSales: 0 });
+    const dRev = t.rev / days, om = t.rev > 0 ? t.op / t.rev : 0, np = t.op - mfP, be = om > 0 ? mfD / om : 0;
+    return { s: { ...t, days, dRev: rd(dRev, 2), pm: t.rev > 0 ? t.pp / t.rev : 0, ar: t.rev > 0 ? t.adSpend / t.rev : 0, om, mfMonthly: mfM, mfDaily: rd(mfD, 2), mfPeriod: rd(mfP, 2), np: rd(np, 2), npm: t.rev > 0 ? np / t.rev : 0, ctr: t.imp > 0 ? t.clk / t.imp : 0, cpc: t.clk > 0 ? t.adSpend / t.clk : 0, acos: t.adSales > 0 ? t.adSpend / t.adSales : 0, roas: t.adSpend > 0 ? t.adSales / t.adSpend : 0, dailyBreakEven: rd(be, 2) }, skus, fc: fcd };
+}
+
+function parseSheet(wb, n, skip) { if (!wb.SheetNames.includes(n)) return []; return XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, defval: '' }).slice(skip); }
+function num(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+function rd(v, d) { return Math.round(v * Math.pow(10, d)) / Math.pow(10, d); }
+function pct(v) { return (v * 100).toFixed(1) + '%'; }
+function $(v) { return '$' + v.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
+function switchTab(id) { document.querySelectorAll('.tab-content').forEach(e => e.classList.add('hidden')); document.querySelectorAll('.tab-btn').forEach(e => e.classList.remove('active')); document.getElementById('tab-' + id).classList.remove('hidden'); document.getElementById('tab-' + id).classList.add('animate-in'); document.querySelector(`[data-tab="${id}"]`).classList.add('active'); }
+function resetDashboard() { document.getElementById('upload-section').classList.remove('hidden'); document.getElementById('dashboard-section').classList.add('hidden'); fi.value = ''; D = null; allSkus = []; Object.values(charts).forEach(c => c && c.destroy); charts = {}; loadHistory(); }
+</script>
+</body>
+</html>
